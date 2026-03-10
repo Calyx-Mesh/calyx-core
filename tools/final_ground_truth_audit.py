@@ -59,7 +59,7 @@ class FinalGroundTruthAudit:
             from Mobile.mobile_wallet import MobileWallet
             wallet = MobileWallet()
             print(f"✅ Wallet: Address {wallet.data['address']} verified.")
-            print(f"💰 Balance: {wallet.data['balance_syn']} $SYN (Public) | {wallet.data['private_balance']} $SYN (Private)")
+            print(f"💰 Balance: {wallet.data['balance_syn']} $DOPA (Public) | {wallet.data['private_balance']} $DOPA (Private)")
             self.results["wallet"] = "PASS"
         except Exception as e:
             print(f"❌ Wallet error: {e}")
@@ -107,3 +107,4 @@ if __name__ == "__main__":
     auditor.audit_wallet()
     auditor.audit_p2p()
     auditor.generate_report()
+
