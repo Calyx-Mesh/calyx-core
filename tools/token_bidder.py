@@ -27,7 +27,7 @@ class TokenBidder:
             "reputation": self.reputation,
             "timestamp": time.time()
         }
-        print(f"[BID] Node {self.node_id[:8]} bidding {bid_price:.4f} $SYN for {shard_id}")
+        print(f"[BID] Node {self.node_id[:8]} bidding {bid_price:.4f} $DOPA for {shard_id}")
         return bid
 
     def resolve_auction(self, bids: List[Dict]) -> Dict:
@@ -63,3 +63,4 @@ if __name__ == "__main__":
     
     if winner['node_id'] == "12D3_TIER_1_PC":
         print("\nSUCCESS: Token Bidding logic correctly prioritized high-trust hardware.")
+

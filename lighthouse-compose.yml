@@ -1,14 +1,15 @@
 
 version: '3.8'
 services:
-  calyx-lighthouse:
-    image: calyx-mesh/lighthouse:latest
+  INGRVM-lighthouse:
+    image: INGRVM-mesh/lighthouse:latest
     ports:
       - "60000:60000"
       - "8000:8000"
     environment:
-      - CALYX_NODE_ROLE=LIGHTHOUSE
-      - CALYX_P2P_PORT=60000
+      - INGRVM_NODE_ROLE=LIGHTHOUSE
+      - INGRVM_P2P_PORT=60000
     volumes:
       - ./lighthouse_env:/app/neuromorphic_env
     restart: always
+

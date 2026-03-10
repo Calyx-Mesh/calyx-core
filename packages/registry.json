@@ -1,35 +1,36 @@
-{
-  "registry_name": "Calyx Austin Genesis",
-  "version": "1.0.0",
-  "last_updated": "2026-02-28",
-  "synapses": [
-    {
-      "id": "sentiment_alpha",
-      "name": "Sentiment Alpha",
-      "category": "NLP",
-      "architecture": "3-16-2 (1-Bit)",
-      "author": "Architect",
-      "description": "Baseline 1-bit sentiment analyzer for mesh verification.",
-      "energy_efficiency_score": "99.9%",
-      "status": "LIVE"
-    },
-    {
-      "id": "synapse_med_diag",
-      "name": "Bio-Signal Monitor",
-      "category": "Medical",
-      "architecture": "64-128-10",
-      "author": "Calyx_Health",
-      "description": "Analyzes spiking bio-sensor data for anomaly detection.",
-      "energy_efficiency_score": "98.5%"
-    },
-    {
-      "id": "synapse_code_opt",
-      "name": "Spiking Refactor",
-      "category": "DevTools",
-      "architecture": "1024-512-256",
-      "author": "Calyx_Core",
-      "description": "Optimizes Python logic into asynchronous spiking events.",
-      "energy_efficiency_score": "95.2%"
-    }
-  ]
-}
+{
+  "registry_name": "INGRVM Austin Genesis",
+  "version": "1.0.0",
+  "last_updated": "2026-02-28",
+  "ingrvms": [
+    {
+      "id": "sentiment_alpha",
+      "name": "Sentiment Alpha",
+      "category": "NLP",
+      "architecture": "3-16-2 (1-Bit)",
+      "author": "Architect",
+      "description": "Baseline 1-bit sentiment analyzer for mesh verification.",
+      "energy_efficiency_score": "99.9%",
+      "status": "LIVE"
+    },
+    {
+      "id": "ingrvm_med_diag",
+      "name": "Bio-Signal Monitor",
+      "category": "Medical",
+      "architecture": "64-128-10",
+      "author": "INGRVM_Health",
+      "description": "Analyzes spiking bio-sensor data for anomaly detection.",
+      "energy_efficiency_score": "98.5%"
+    },
+    {
+      "id": "ingrvm_code_opt",
+      "name": "Spiking Refactor",
+      "category": "DevTools",
+      "architecture": "1024-512-256",
+      "author": "INGRVM_Core",
+      "description": "Optimizes Python logic into asynchronous spiking events.",
+      "energy_efficiency_score": "95.2%"
+    }
+  ]
+}
+

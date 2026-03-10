@@ -1,38 +1,38 @@
-# Calyx Local Mesh Simulation (Austin Genesis)
+# INGRVM Local Mesh Simulation (Austin Genesis)
 # Spawning 3-5 nodes to test Spike Protocol and Sharding logic.
 
 services:
-  calyx_seed:
+  INGRVM_seed:
     build: .
-    image: calyx-node:latest
-    container_name: calyx_seed
+    image: INGRVM-node:latest
+    container_name: INGRVM_seed
     ports:
       - "8000:8000"
       - "60001:60001"
     environment:
-      - CALYX_ROLE=SEED
+      - INGRVM_ROLE=SEED
     volumes:
       - .:/app
 
-  calyx_node_01:
-    image: calyx-node:latest
-    container_name: calyx_node_01
+  INGRVM_node_01:
+    image: INGRVM-node:latest
+    container_name: INGRVM_node_01
     depends_on:
-      - calyx_seed
+      - INGRVM_seed
     environment:
-      - CALYX_ROLE=NEURON
-      - BOOTSTRAP_ADDR=calyx_seed
+      - INGRVM_ROLE=NEURON
+      - BOOTSTRAP_ADDR=INGRVM_seed
     volumes:
       - .:/app
 
-  calyx_node_02:
-    image: calyx-node:latest
-    container_name: calyx_node_02
+  INGRVM_node_02:
+    image: INGRVM-node:latest
+    container_name: INGRVM_node_02
     depends_on:
-      - calyx_seed
+      - INGRVM_seed
     environment:
-      - CALYX_ROLE=NEURON
-      - BOOTSTRAP_ADDR=calyx_seed
+      - INGRVM_ROLE=NEURON
+      - BOOTSTRAP_ADDR=INGRVM_seed
     volumes:
       - .:/app
 
@@ -40,3 +40,4 @@ services:
 networks:
   default:
     driver: bridge
+

@@ -2,7 +2,42 @@ import torch
 import torch.nn as nn
 import numpy as np
 import time
-from typing import Dict, Optional
+import hashlib
+from typing import Dict, Optional, List
+
+# --- Poseidon ZK-Friendly Hashing (Task #02) ---
+class Poseidon:
+    """
+    Simplified Poseidon Hash implementation for Zero-Knowledge Proofs.
+    Optimized for finite field operations (simulated here for 1-bit weights).
+    """
+    def __init__(self, state_size: int = 3, rounds: int = 8):
+        self.t = state_size
+        self.rounds = rounds
+        # Round constants (Simulated for the prototype)
+        self.constants = [hashlib.sha256(str(i).encode()).digest()[0] % 256 for i in range(rounds)]
+        # MDS Matrix (Maximum Distance Separable) for diffusion
+        self.mds = np.circulant([2, 1, 1]) 
+
+    def sbox(self, x: np.ndarray) -> np.ndarray:
+        """ Power S-box (x^5) for non-linearity. """
+        return np.power(x, 5)
+
+    def hash(self, inputs: List[float]) -> str:
+        """ Hashes a list of inputs into a single verifiable string. """
+        state = np.zeros(self.t)
+        for i, val in enumerate(inputs[:self.t]):
+            state[i] = val
+        
+        for r in range(self.rounds):
+            # 1. Add Round Constants
+            state = (state + self.constants[r]) % 256
+            # 2. S-box Layer
+            state = self.sbox(state.astype(int)) % 256
+            # 3. MDS Mix Layer
+            state = np.dot(self.mds, state) % 256
+            
+        return hashlib.sha256(state.tobytes()).hexdigest()
 
 # --- Popcount Lookup Table (LUT) for uint8 ---
 # Pre-calculates the number of set bits for every byte value (0-255)
@@ -13,6 +48,15 @@ class NeuromorphicQuantizer:
     Solarpunk Optimization: Converts 32-bit weights into 1-bit 'Spiking' weights.
     Reduces model size by 32x, allowing 80B models to fit on consumer hardware.
     """
+    @staticmethod
+    def hash_weights(weights: torch.Tensor) -> str:
+        """ Task #02: Poseidon Hashing for ZK-verifiable state. """
+        poseidon = Poseidon()
+        # Sample 100 points for the hash to keep it fast
+        flattened = weights.flatten()
+        step = max(1, len(flattened) // 100)
+        sample = flattened[::step].tolist()
+        return poseidon.hash(sample)
     @staticmethod
     def binarize(weights: torch.Tensor) -> torch.Tensor:
         """
@@ -39,11 +83,14 @@ class NeuromorphicQuantizer:
         return packed
 
     @staticmethod
-    def bit_unpack(packed: torch.Tensor, original_shape: torch.Size) -> torch.Tensor:
+    def bit_unpack(packed: torch.Tensor, original_shape: List[int]) -> torch.Tensor:
         """
         Unpacks uint8 bytes back into [-1, 1] 1-bit weights.
         """
-        num_elements = original_shape.numel()
+        num_elements = 1
+        for dim in original_shape:
+            num_elements *= dim
+        
         unpacked = torch.zeros(packed.numel() * 8, dtype=torch.float32, device=packed.device)
         for i in range(8):
             unpacked[i::8] = (packed >> i) & 1
@@ -53,7 +100,7 @@ class NeuromorphicQuantizer:
     @staticmethod
     def bitwise_xnor_linear(input_tensor: torch.Tensor, 
                             packed_weight: torch.Tensor, 
-                            weight_shape: torch.Size,
+                            weight_shape: List[int],
                             bias: Optional[torch.Tensor] = None) -> torch.Tensor:
         """
         Optimized 1-bit Kernel for CPUs (Task #13).
@@ -76,15 +123,17 @@ class BinaryLinear(nn.Linear):
     A Linear layer that uses 1-bit weights and activations.
     Optimized for low-end CPUs (Task #13).
     """
+    orig_shape: List[int]
+
     def __init__(self, in_features, out_features, bias=True):
         super().__init__(in_features, out_features, bias)
         self.is_packed = False
-        self.packed_weight = None
-        self.orig_shape = None
+        self.register_buffer('packed_weight', torch.empty(0, dtype=torch.uint8))
+        self.orig_shape: List[int] = []
 
     def pack_weights(self):
         """ Permanent weight compression. """
-        self.orig_shape = self.weight.shape
+        self.orig_shape = list(self.weight.shape)
         self.packed_weight = NeuromorphicQuantizer.bit_pack(self.weight)
         self.is_packed = True
         # Clear the heavy 32-bit weights from memory

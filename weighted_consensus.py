@@ -7,7 +7,7 @@ from peer_database import PeerDatabase
 
 class WeightedEnsemble:
     """
-    Prevents Sybil Attacks by weighting decisions based on $SYN stake and Reputation.
+    Prevents Sybil Attacks by weighting decisions based on $DOPA stake and Reputation.
     Integrates directly with the persistent PeerDatabase.
     """
     def __init__(self, db: PeerDatabase):
@@ -63,8 +63,8 @@ if __name__ == "__main__":
     ensemble = WeightedEnsemble(db)
     
     # Simulate a Sybil Attack:
-    # 1. One 'Whale' node (Honest, lots of SYN)
-    # 2. Five 'Sybil' nodes (Malicious, zero SYN, trying to outvote)
+    # 1. One 'Whale' node (Honest, lots of DOPA)
+    # 2. Five 'Sybil' nodes (Malicious, zero DOPA, trying to outvote)
     
     # Setup database records
     whale_id = "12D3KooW_HONEST_WHALE"
@@ -87,3 +87,4 @@ if __name__ == "__main__":
         print("\nSUCCESS: Weighted voting defeated the Sybil attack.")
     else:
         print("\nFAILURE: Sybil nodes successfully outvoted the whale.")
+

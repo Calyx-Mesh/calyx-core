@@ -11,7 +11,7 @@ class GlobalOrchestrator:
     synchronizing bootstrap nodes from a central registry.
     """
     def __init__(self, registry_url: Optional[str] = None):
-        self.registry_url = registry_url or "https://raw.githubusercontent.com/Calyx-Mesh/Network/master/bootstrap_nodes.json"
+        self.registry_url = registry_url or "https://raw.githubusercontent.com/INGRVM-Mesh/Network/master/bootstrap_nodes.json"
         
         # Resolve path relative to this file
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -63,3 +63,4 @@ class GlobalOrchestrator:
 if __name__ == "__main__":
     orch = GlobalOrchestrator()
     orch.update_local_bootstrap()
+

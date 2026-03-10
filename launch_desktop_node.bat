@@ -1,6 +1,6 @@
 @echo off
-title CALYX_DESKTOP_NODE (1080 Ti)
-echo 🌿 Starting Calyx Desktop Node...
+title INGRVM_DESKTOP_NODE (1080 Ti)
+echo 🌿 Starting INGRVM Desktop Node...
 
 :: Set the base directory to the location of this script
 set BASE_DIR=%~dp0
@@ -29,3 +29,4 @@ echo 🚀 Launching Hub Server on Port 8000...
 %PY_EXE% hub_server.py
 
 pause
+

@@ -10,7 +10,7 @@ def send_probe(target_ip, node_id, action=None):
     """
     Sends a low-energy UDP beacon to announce readiness or trigger actions.
     """
-    print(f"--- 📡 Calyx Mesh Probe: {target_ip} ---")
+    print(f"--- 📡 INGRVM Mesh Probe: {target_ip} ---")
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     payload = {
@@ -34,3 +34,4 @@ if __name__ == "__main__":
     target = sys.argv[2] if len(sys.argv) > 2 else HUB_IP
     action = sys.argv[3] if len(sys.argv) > 3 else None
     send_probe(target, node, action)
+

@@ -32,7 +32,7 @@ if __name__ == "__main__":
     logger = MercenaryLogger("4QbWtbA6...")
     
     # 1. Log a Reward Event
-    logger.log_event("REWARD_SETTLEMENT", {"amount": "12.5 $SYN", "epoch": 42})
+    logger.log_event("REWARD_SETTLEMENT", {"amount": "12.5 $DOPA", "epoch": 42})
     
     # 2. Log a Homeostasis Event
     logger.log_event("HOMEOSTASIS_ADJUST", {"new_threshold": 1.75, "reason": "Over-stimulation"})
@@ -41,3 +41,4 @@ if __name__ == "__main__":
     logger.log_event("ZK_PROOF_GEN", {"trace_id": "ddb2e44d...", "status": "COMMITTED"})
     
     print("\nSUCCESS: Mercenary Logger is ready for content generation.")
+

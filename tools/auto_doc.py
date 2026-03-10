@@ -12,7 +12,7 @@ def generate_docs():
     
     print(f"--- 📚 GENERATING API REFERENCE ---")
     
-    doc_content = "# Calyx API Reference\n\nGenerated automatically from the source code.\n\n"
+    doc_content = "# INGRVM API Reference\n\nGenerated automatically from the source code.\n\n"
     
     for filename in os.listdir(core_dir):
         if filename.endswith(".py") and not filename.startswith("__"):
@@ -48,3 +48,4 @@ def generate_docs():
 
 if __name__ == "__main__":
     generate_docs()
+

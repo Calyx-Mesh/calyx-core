@@ -65,7 +65,8 @@ if __name__ == "__main__":
     if record:
         print(f"Peer: {record.peer_id[:12]}...")
         print(f"Reputation: {record.reputation:.3f}")
-        print(f"Total $SYN: {record.tokens_earned}")
+        print(f"Total $DOPA: {record.tokens_earned}")
         
     if os.path.exists("neuromorphic_env/peer_db.json"):
         print("\nSUCCESS: Peer database is persistent and functional.")
+

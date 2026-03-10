@@ -7,7 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from peer_database import PeerDatabase
 
 def populate():
-    db = PeerDatabase(db_path="Calyx/Core/peer_db.json")
+    db = PeerDatabase(db_path="INGRVM/Core/peer_db.json")
     
     locations = ["Zilker", "Barton", "Rainey", "Domain", "Mueller", "East6th", "Congress", "HydePark"]
     descriptors = ["Firefly", "Seedling", "Nerve", "Sprout", "Bloom", "Root", "Vine", "Leaf"]
@@ -32,3 +32,4 @@ def populate():
 
 if __name__ == "__main__":
     populate()
+

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calyx | Onboarding</title>
+    <title>INGRVM | Onboarding</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body { background-color: #0A0F0D; color: #E0E0E0; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
@@ -37,7 +37,7 @@
     <div class="max-w-md w-full p-6">
         <!-- HEADER -->
         <div class="text-center mb-10">
-            <h1 class="text-4xl font-black text-chlorophyll tracking-tighter">CALYX_BOOT</h1>
+            <h1 class="text-4xl font-black text-chlorophyll tracking-tighter">INGRVM_BOOT</h1>
             <p class="text-[10px] text-gold uppercase tracking-widest mt-2">Neuromorphic Mesh Initialization</p>
         </div>
 
@@ -47,7 +47,7 @@
                 <!-- STEP 1: IDENTITY -->
                 <div id="step1" class="space-y-6">
                     <h2 class="text-xl font-bold text-mist uppercase">01_Identity</h2>
-                    <p class="text-xs text-mist/50 leading-relaxed">Every node in the Calyx mesh requires a unique cryptographic signature.</p>
+                    <p class="text-xs text-mist/50 leading-relaxed">Every node in the INGRVM mesh requires a unique cryptographic signature.</p>
                     
                     <div class="space-y-4 pt-4">
                         <button onclick="generateId()" class="w-full bg-chlorophyll/20 border border-chlorophyll/40 py-4 rounded-xl text-chlorophyll font-bold hover:bg-chlorophyll/30 transition-all text-xs uppercase tracking-widest">Generate New Peer ID</button>
@@ -182,9 +182,9 @@
 
         function finishOnboarding() {
             const peerId = document.getElementById('peerId').value;
-            localStorage.setItem('calyx_peer_id', peerId);
-            localStorage.setItem('calyx_role', selectedRole);
-            localStorage.setItem('calyx_hub_ip', document.getElementById('hubIp').value);
+            localStorage.setItem('INGRVM_peer_id', peerId);
+            localStorage.setItem('INGRVM_role', selectedRole);
+            localStorage.setItem('INGRVM_hub_ip', document.getElementById('hubIp').value);
             
             // Redirect to main dashboard
             window.location.href = "/";
@@ -192,3 +192,4 @@
     </script>
 </body>
 </html>
+

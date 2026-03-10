@@ -14,39 +14,40 @@ import shutil
 import sqlite3
 from typing import List, Dict, Any
 
-# --- Calyx Logic Imports ---
+# --- INGRVM Logic Imports ---
 from peer_database import PeerDatabase
 from efficiency_monitor import EfficiencyMonitor
 from seed_generator import DigitalSeed
-from governance_dao import SynapseDAO
-from reward_engine import SynapseLedger
-from tools.calyx_logger import CalyxLogger
-from synapses.sentiment_alpha import SentimentAlpha
-from synapse_registry import SynapseRegistry
+from governance_dao import INGRVMDAO
+from reward_engine import INGRVMLedger
+from tools.ingrvm_logger import INGRVMLogger
+
+from ingrvms.sentiment_alpha import SentimentAlpha
+from ingrvm_registry import INGRVMRegistry
 from shard_manager import ShardManager
 from ipfs_storage import CIDStorage
 from global_orchestrator import GlobalOrchestrator
 
-from config import SynapseConfig
+from config import INGRVMConfig
 
-conf = SynapseConfig()
+conf = INGRVMConfig()
 
-app = FastAPI(title="Calyx Hub", version="1.3.4")
+app = FastAPI(title="INGRVM Hub", version="1.3.4")
 db = PeerDatabase(db_path=conf.get("paths", "peer_db"))
 monitor = EfficiencyMonitor()
-ledger = SynapseLedger(db_path="neuromorphic_env/ledger.db")
-dao = SynapseDAO(ledger, conf, db_path="neuromorphic_env/governance.db")
-registry_manager = SynapseRegistry(db_path="neuromorphic_env/marketplace.db", storage_dir=conf.get("paths", "synapses_dir"))
+ledger = INGRVMLedger(db_path="neuromorphic_env/ledger.db")
+dao = INGRVMDAO(ledger, conf, db_path="neuromorphic_env/governance.db")
+registry_manager = INGRVMRegistry(db_path="neuromorphic_env/marketplace.db", storage_dir=conf.get("paths", "ingrvms_dir"))
 cid_storage = CIDStorage(root_dir="neuromorphic_env/ipfs_blob")
 global_orch = GlobalOrchestrator()
 # Use a relative path from the config if possible, or handle via env
-logger = CalyxLogger(log_path=os.getenv("CALYX_LOG_PATH", "../../logs/node_activity.jsonl"))
+logger = INGRVMLogger(log_path=os.getenv("INGRVM_LOG_PATH", "../../logs/node_activity.jsonl"))
 
 # Task #10: Shard & Mesh State
 shard_mgr = ShardManager("HUB_NODE", discovery_dir="mesh_discovery", config_path="NONE")
 
-# Local state for running synapses (Task #9)
-running_synapses: List[Dict[str, Any]] = []
+# Local state for running ingrvms (Task #9)
+running_ingrvms: List[Dict[str, Any]] = []
 
 # --- Phase 3: Neural Engines ---
 sentiment_engine = SentimentAlpha()
@@ -54,12 +55,12 @@ inference_queue = asyncio.Queue()
 
 class CommandRequest(BaseModel):
     text: str
-    synapse_id: str = "sentiment_alpha"
+    ingrvm_id: str = "sentiment_alpha"
     peer_id: str = "LOCAL_OPERATOR"
     poi_hash: str = "" # Task #7: Proof-of-Inference hash
 
 class InstallRequest(BaseModel):
-    synapse_id: str
+    ingrvm_id: str
     name: str
 
 class VoteRequest(BaseModel):
@@ -70,7 +71,7 @@ class VoteRequest(BaseModel):
 class ProposalRequest(BaseModel):
     proposer_id: str
     description: str
-    synapse_id: str = "skill_0"
+    ingrvm_id: str = "skill_0"
     weights_hash: str = "sha256-default"
 
 class GPUVitals(BaseModel):
@@ -109,7 +110,36 @@ class ShardDistributionRequest(BaseModel):
     layer_end: int
     vram_gb: float
 
-mailboxes: Dict[str, List[MailLetter]] = {}
+# Task #25: Mailroom Persistence
+MAILBOX_PATH = os.path.join("neuromorphic_env", "mailbox.json")
+RECEIPTS_PATH = os.path.join("neuromorphic_env", "receipts.json")
+
+def load_mail_state():
+    mb, rec = {}, {}
+    if os.path.exists(MAILBOX_PATH):
+        try:
+            with open(MAILBOX_PATH, "r") as f:
+                raw_mb = json.load(f)
+                mb = {k: [MailLetter(**m) for m in v] for k, v in raw_mb.items()}
+        except Exception as e: print(f"Error loading mailboxes: {e}")
+    if os.path.exists(RECEIPTS_PATH):
+        try:
+            with open(RECEIPTS_PATH, "r") as f:
+                rec = json.load(f)
+        except Exception as e: print(f"Error loading receipts: {e}")
+    return mb, rec
+
+def save_mail_state():
+    try:
+        os.makedirs("neuromorphic_env", exist_ok=True)
+        with open(MAILBOX_PATH, "w") as f:
+            serializable_mb = {k: [m.model_dump() for m in v] for k, v in mailboxes.items()}
+            json.dump(serializable_mb, f, indent=4)
+        with open(RECEIPTS_PATH, "w") as f:
+            json.dump(mail_receipts, f, indent=4)
+    except Exception as e: print(f"Error saving mail state: {e}")
+
+mailboxes, mail_receipts = load_mail_state()
 
 class ConnectionManager:
     def __init__(self):
@@ -129,7 +159,7 @@ manager = ConnectionManager()
 async def log_streamer():
     """ Watches the JSONL log file and broadcasts to WS. """
     # Use environment variable for log path, with a safe fallback
-    log_path = os.getenv("CALYX_LOG_PATH", os.path.join("..", "..", "logs", "node_activity.jsonl"))
+    log_path = os.getenv("INGRVM_LOG_PATH", os.path.join("..", "..", "logs", "node_activity.jsonl"))
     if not os.path.exists(log_path):
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         open(log_path, 'a').close()
@@ -155,10 +185,10 @@ async def log_streamer():
         await asyncio.sleep(1)
 
 async def sync_registry():
-    """ Fetches the latest synapse registry from a remote source. """
+    """ Fetches the latest ingrvm registry from a remote source. """
     # Use environment variable for registry URL
-    REMOTE_URL = os.getenv("CALYX_REGISTRY_URL", "https://raw.githubusercontent.com/<ORG_NAME>/<REPO_NAME>/master/Calyx/Core/packages/registry.json")
-    print(f"[HUB] Syncing synapse registry from {REMOTE_URL}...")
+    REMOTE_URL = os.getenv("INGRVM_REGISTRY_URL", "https://raw.githubusercontent.com/INGRVM-Mesh/INGRVM-Core/master/INGRVM/Core/packages/registry.json")
+    print(f"[HUB] Syncing ingrvm registry from {REMOTE_URL}...")
     await asyncio.sleep(1) 
     print("[HUB] Registry synced successfully.")
 
@@ -174,7 +204,7 @@ async def neural_worker():
         task = await inference_queue.get()
         peer_id = task.get("peer_id", "UNKNOWN")
         text = task.get("text", "")
-        synapse_id = task.get("synapse_id", "sentiment_alpha")
+        ingrvm_id = task.get("ingrvm_id", "sentiment_alpha")
         reported_poi_hash = task.get("poi_hash", "")
         
         # Run 1-bit Inference
@@ -188,7 +218,7 @@ async def neural_worker():
         if reported_poi_hash == expected_poi or peer_id == "LOCAL_OPERATOR" or not reported_poi_hash:
             # Register Work & Rewards (Phase 6 SQL Ledger)
             ledger.record_work(peer_id, spikes=result['spikes'])
-            ledger.mint_rewards(peer_id, amount=(result['spikes'] * 0.001), memo=f"Inference: {synapse_id}")
+            ledger.mint_rewards(peer_id, amount=(result['spikes'] * 0.001), memo=f"Inference: {ingrvm_id}")
             
             logger.log("NEURAL_INFERENCE", {
                 "peer": peer_id,
@@ -199,16 +229,16 @@ async def neural_worker():
             })
         else:
             # Phase 6 Task #16: Slash for invalid PoI
-            ledger.slash_node(peer_id, penalty_syn=5.0, rep_burn=0.1, memo=f"PoI Mismatch: {synapse_id}")
+            ledger.slash_node(peer_id, penalty_syn=5.0, rep_burn=0.1, memo=f"PoI Mismatch: {ingrvm_id}")
             print(f"[PoI-REJECT] Invalid PoI from {peer_id}. Expected {expected_poi[:8]}... got {reported_poi_hash[:8]}...")
             logger.log("INVALID_POI", {
                 "peer": peer_id,
-                "synapse": synapse_id
+                "ingrvm": ingrvm_id
             })
         
         # Prepare broadcast payload matching the UI expectation
         ui_payload = {
-            "synapse_id": synapse_id,
+            "ingrvm_id": ingrvm_id,
             "input": text,
             "output": f"{result['sentiment']} (Conf: {result['confidence']}, Spikes: {result['spikes']})"
         }
@@ -276,23 +306,28 @@ async def startup_event():
     # Load config in an async-friendly way (Task #10)
     shard_mgr.load_config("shard_config.json")
     
-    # Task #04: mDNS Service Discovery Registration
-    try:
-        hub_port = int(os.getenv("CALYX_HUB_PORT", 8000))
-        local_ip = os.getenv("CALYX_NODE_IP", socket.gethostbyname(socket.gethostname()))
-        
-        zeroconf_obj = Zeroconf()
-        zc_info = ServiceInfo(
-            "_calyx-hub._tcp.local.",
-            f"CalyxHub-{shard_mgr.node_id}._calyx-hub._tcp.local.",
-            addresses=[socket.inet_aton(local_ip)],
-            port=hub_port,
-            properties={"node_id": shard_mgr.node_id, "version": "1.3.4"}
-        )
-        zeroconf_obj.register_service(zc_info)
-        print(f"[HUB] mDNS Service Registered: {local_ip}:{hub_port} as _calyx-hub._tcp.local.")
-    except Exception as e:
-        print(f"[ERROR] Failed to register Zeroconf: {e}")
+    # Task #04: mDNS Service Discovery Registration (Non-blocking)
+    def register_mdns():
+        global zeroconf_obj, zc_info
+        try:
+            hub_port = int(os.getenv("INGRVM_HUB_PORT", 8000))
+            local_ip = os.getenv("INGRVM_NODE_IP", socket.gethostbyname(socket.gethostname()))
+            
+            zeroconf_obj = Zeroconf()
+            zc_info = ServiceInfo(
+                "_INGRVM-hub._tcp.local.",
+                f"INGRVMHub-{shard_mgr.node_id}._INGRVM-hub._tcp.local.",
+                addresses=[socket.inet_aton(local_ip)],
+                port=hub_port,
+                properties={"node_id": shard_mgr.node_id, "version": "1.3.4"}
+            )
+            zeroconf_obj.register_service(zc_info)
+            print(f"[HUB] mDNS Service Registered: {local_ip}:{hub_port} as _INGRVM-hub._tcp.local.")
+        except Exception as e:
+            print(f"[ERROR] Failed to register Zeroconf: {e}")
+
+    import threading
+    threading.Thread(target=register_mdns, daemon=True).start()
 
     asyncio.create_task(log_streamer())
     asyncio.create_task(sync_registry())
@@ -310,8 +345,26 @@ async def shutdown_event():
         zeroconf_obj.unregister_service(zc_info)
         zeroconf_obj.close()
 
+# Task #02: Circuit Relay V2 (WAN Traversal)
+from circuit_relay import INGRVMRelayV2
+relay_node = INGRVMRelayV2("12D3KooW_PC_MASTER_RELAY")
+
+class RelayRequest(BaseModel):
+    node_id: str
+
+@app.post("/api/mesh/relay/reserve")
+async def reserve_relay(req: RelayRequest):
+    """
+    Grants a relay reservation for a node behind NAT.
+    """
+    path = relay_node.request_reservation(req.node_id)
+    if path:
+        return {"status": "RESERVED", "relay_path": path}
+    return {"status": "FAILED"}
+
 @app.get("/api/mesh/ping")
 async def ping_mesh():
+
     return {"status": "PONG", "node_id": shard_mgr.node_id, "timestamp": time.time()}
 
 @app.post("/api/mesh/shard/request")
@@ -370,16 +423,16 @@ async def get_inbox(node_id: str):
 
 @app.get("/api/marketplace/catalog")
 async def get_marketplace_catalog():
-    """ Returns all registered synapses in the mesh. """
-    return registry_manager.list_synapses()
+    """ Returns all registered ingrvms in the mesh. """
+    return registry_manager.list_ingrvms()
 
 @app.get("/api/marketplace/search")
 async def search_marketplace(q: str):
-    """ Task #11: Returns synapses matching the search query. """
-    return registry_manager.search_synapses(q)
+    """ Task #11: Returns ingrvms matching the search query. """
+    return registry_manager.search_ingrvms(q)
 
 @app.post("/api/marketplace/upload")
-async def upload_synapse(
+async def upload_ingrvm(
     name: str, 
     author_id: str, 
     version: str, 
@@ -402,39 +455,47 @@ async def upload_synapse(
         
         # 3. Register in SQL
         metadata = {
-            "synapse_id": f"{name.lower().replace(' ', '_')}_{version}",
+            "ingrvm_id": f"{name.lower().replace(' ', '_')}_{version}",
             "name": name,
             "author_id": author_id,
             "version": version,
             "category": category,
             "description": description,
             "cid": cid,
-            "architecture": architecture
+            "architecture": architecture,
+            "listing_fee": 10.0, # 10 tokens to list
+            "token_symbol": os.getenv("INGRVM_TOKEN_SYMBOL", "DOPA")
         }
-        registry_manager.register_synapse(metadata)
         
-        return {"status": "SUCCESS", "cid": cid, "synapse_id": metadata["synapse_id"]}
+        # Deduct listing fee from author (Task #11)
+        if ledger.get_balance(author_id) >= 10.0:
+            ledger.transfer(author_id, "BURN_ADDRESS", 10.0)
+            registry_manager.register_ingrvm(metadata)
+            logger.log("DOPAAPSE_REGISTERED", {"id": metadata["ingrvm_id"], "by": author_id})
+            return {"status": "SUCCESS", "cid": cid, "ingrvm_id": metadata["ingrvm_id"]}
+        else:
+            return {"status": "FAILED", "error": "Insufficient funds for listing fee."}
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
 @app.get("/api/marketplace/download/{cid}")
-async def download_synapse(cid: str):
+async def download_ingrvm(cid: str):
     """ Returns the model weight blob for a specific CID. """
     path = cid_storage.get_file_path(cid)
     if path:
         return FileResponse(path, filename=f"{cid}.pt")
     return {"error": "CID not found in local mesh cache."}
 
-@app.get("/api/marketplace/details/{synapse_id}")
-async def get_synapse_details(synapse_id: str):
-    """ Returns full metadata for a specific synapse. """
+@app.get("/api/marketplace/details/{ingrvm_id}")
+async def get_ingrvm_details(ingrvm_id: str):
+    """ Returns full metadata for a specific ingrvm. """
     reg_path = os.path.join("packages", "registry.json")
     if os.path.exists(reg_path):
         with open(reg_path, "r") as f:
             registry = json.load(f)
-            for s in registry.get("synapses", []):
-                if s["id"] == synapse_id:
+            for s in registry.get("ingrvms", []):
+                if s["id"] == ingrvm_id:
                     return s
     return {"error": "Not found"}
 
@@ -475,15 +536,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/api/command")
 async def handle_command(cmd: CommandRequest):
-    await inference_queue.put({"peer_id": cmd.peer_id, "text": cmd.text, "synapse_id": cmd.synapse_id})
-    logger.log("COMMAND_INJECTED", {"synapse": cmd.synapse_id, "text": cmd.text[:50] + "...", "by": cmd.peer_id})
+    await inference_queue.put({"peer_id": cmd.peer_id, "text": cmd.text, "ingrvm_id": cmd.ingrvm_id})
+    logger.log("COMMAND_INJECTED", {"ingrvm": cmd.ingrvm_id, "text": cmd.text[:50] + "...", "by": cmd.peer_id})
     return {"status": "QUEUED"}
 
 @app.post("/api/marketplace/install")
 async def handle_install(req: InstallRequest):
-    if not any(rs['synapse_id'] == req.synapse_id for rs in running_synapses):
-        running_synapses.append(req.model_dump())
-        logger.log("SYNAPSE_INSTALLED", {"id": req.synapse_id, "name": req.name})
+    if not any(rs['ingrvm_id'] == req.ingrvm_id for rs in running_ingrvms):
+        running_ingrvms.append(req.model_dump())
+        logger.log("DOPAAPSE_INSTALLED", {"id": req.ingrvm_id, "name": req.name})
         return {"status": "INSTALLED"}
     return {"status": "ALREADY_RUNNING"}
 
@@ -495,13 +556,13 @@ async def handle_stress():
 
 @app.post("/api/vitals")
 async def handle_vitals(vitals: GPUVitals):
-    if vitals.psk != os.getenv("CALYX_SECURE_PSK", "CALYX_SECURE_2026"): return {"status": "UNAUTHORIZED"}
+    if vitals.psk != os.getenv("INGRVM_SECURE_PSK", "INGRVM_SECURE_2026"): return {"status": "UNAUTHORIZED"}
     await manager.broadcast(json.dumps({"type": "VITALS", "payload": vitals.model_dump()}))
     return {"status": "OK"}
 
 @app.post("/api/mobile/vitals")
 async def handle_mobile_vitals(vitals: MobileVitals):
-    if vitals.psk != os.getenv("CALYX_MOBILE_PSK", "CALYX_MOBILE_2026"): return {"status": "UNAUTHORIZED"}
+    if vitals.psk != os.getenv("INGRVM_MOBILE_PSK", "INGRVM_MOBILE_2026"): return {"status": "UNAUTHORIZED"}
     await manager.broadcast(json.dumps({"type": "MOBILE_VITALS", "payload": vitals.model_dump()}))
     return {"status": "OK"}
 
@@ -525,12 +586,12 @@ async def handle_inference(req: CommandRequest):
             except Exception as e:
                 print(f"[MULTI-HOP] Forwarding failed: {e}")
 
-    await inference_queue.put({"peer_id": req.peer_id, "text": req.text, "synapse_id": req.synapse_id, "poi_hash": req.poi_hash})
+    await inference_queue.put({"peer_id": req.peer_id, "text": req.text, "ingrvm_id": req.ingrvm_id, "poi_hash": req.poi_hash})
     return {"status": "QUEUED", "queue_depth": inference_queue.qsize()}
 
 @app.post("/api/dao/propose")
 async def handle_propose(req: ProposalRequest):
-    p_id = dao.create_proposal(req.proposer_id, req.description, req.synapse_id, req.weights_hash)
+    p_id = dao.create_proposal(req.proposer_id, req.description, req.ingrvm_id, req.weights_hash)
     if p_id:
         logger.log("DAO_PROPOSAL_CREATED", {"id": p_id, "by": req.proposer_id, "desc": req.description})
         return {"status": "CREATED", "proposal_id": p_id}
@@ -582,8 +643,28 @@ async def get_proposal_votes(proposal_id: str):
     """ Task #14: Returns all votes for a specific proposal for global sync. """
     return dao.get_votes_for_proposal(proposal_id)
 
+async def get_mesh_nodes():
+    """ Helper to get nodes for health map. """
+    nodes = []
+    # PC_MASTER is always first
+    nodes.append({
+        "id": "PC_MASTER",
+        "is_ready": True,
+        "type": "HUB"
+    })
+    
+    for node_id, shards in shard_mgr.mesh_shards.items():
+        nodes.append({
+            "id": node_id,
+            "is_ready": shards[0].get("is_ready", False) if isinstance(shards[0], dict) else shards[0].is_ready,
+            "type": "NODE"
+        })
+    return {"nodes": nodes}
+
 if __name__ == "__main__":
     import uvicorn
-    host = os.getenv("CALYX_HUB_HOST", "0.0.0.0")
-    port = int(os.getenv("CALYX_HUB_PORT", 8000))
+    host = os.getenv("INGRVM_HUB_HOST", "0.0.0.0")
+    port = int(os.getenv("INGRVM_HUB_PORT", 8000))
     uvicorn.run(app, host=host, port=port)
+
+

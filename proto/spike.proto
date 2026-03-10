@@ -1,30 +1,30 @@
-syntax = "proto3";
-
-package synapse;
-
-/*
- * The 'Universal Language' of the Synapse Mesh.
- * Strictly typed for cross-platform (Swift/Kotlin/C++) compatibility.
- */
-message NeuralSpike {
-  string task_id = 1;
-  string skill_id = 2;
-  string node_id = 3;
-  double timestamp = 4;
-  
-  // The neuromorphic payload
-  repeated int32 spike_data = 5;
-  
-  // Verification metadata
-  string input_hash = 6;
-  string witness_hash = 7;
-  string signature = 8;
-}
-
-message ShardAdvertisement {
-  string peer_id = 1;
-  string model_name = 2;
-  int32 layer_start = 3;
-  int32 layer_end = 4;
-  double vram_capacity_gb = 5;
-}
+syntax = "proto3";
+
+package ingrvm;
+
+/*
+ * The 'Universal Language' of the INGRVM Mesh.
+ * Strictly typed for cross-platform (Swift/Kotlin/C++) compatibility.
+ */
+message NeuralSpike {
+  string task_id = 1;
+  string skill_id = 2;
+  string node_id = 3;
+  double timestamp = 4;
+  
+  // The neuromorphic payload
+  repeated int32 spike_data = 5;
+  
+  // Verification metadata
+  string input_hash = 6;
+  string witness_hash = 7;
+  string signature = 8;
+}
+
+message ShardAdvertisement {
+  string peer_id = 1;
+  string model_name = 2;
+  int32 layer_start = 3;
+  int32 layer_end = 4;
+  double vram_capacity_gb = 5;
+}

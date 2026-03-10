@@ -1,473 +1,475 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Calyx Hub | Mission Control</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { background-color: #0A0F0D; color: #E0E0E0; font-family: 'Courier New', Courier, monospace; overflow-x: hidden; }
-        .bg-bark { background-color: rgba(74, 55, 40, 0.2); }
-        .text-gold { color: #FFD700; }
-        .text-chlorophyll { color: #2D6A4F; }
-        .spike-flash { background-color: rgba(45, 106, 79, 0.4) !important; }
-        @keyframes pulse-grow {
-            0% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.02); filter: brightness(1.5); }
-            100% { transform: scale(1); filter: brightness(1); }
-        }
-        .plant-pulse { animation: pulse-grow 0.3s ease-out; }
-        .tab-active { border-bottom: 2px solid #FFD700; color: #FFD700; font-weight: bold; }
-        #neuralOutput::-webkit-scrollbar, #ledgerTable::-webkit-scrollbar { width: 4px; }
-        #neuralOutput::-webkit-scrollbar-thumb, #ledgerTable::-webkit-scrollbar-thumb { background: #2D6A4F; border-radius: 10px; }
-        
-        .link-pulse {
-            stroke-dasharray: 5;
-            animation: dash 2s linear infinite;
-        }
-        @keyframes dash {
-            to { stroke-dashoffset: -20; }
-        }
-    </style>
-</head>
-<body class="p-8">
-    <div class="max-w-6xl mx-auto">
-        <div class="flex justify-between items-end border-b border-chlorophyll/30 pb-4 mb-8">
-            <div>
-                <h1 class="text-3xl font-bold text-chlorophyll font-mono">CALYX_HUB <span class="text-xs text-mist/50">v1.3.4</span></h1>
-                <div class="flex space-x-8 mt-4">
-                    <button onclick="showTab('mesh')" id="tab-mesh" class="tab-active text-xs uppercase tracking-widest pb-2">Mesh Monitor</button>
-                    <button onclick="showTab('market')" id="tab-market" class="text-xs uppercase tracking-widest pb-2 text-mist/50">Synapse Market</button>
-                    <button onclick="showTab('gov')" id="tab-gov" class="text-xs uppercase tracking-widest pb-2 text-mist/50">DAO Governance</button>
-                    <button onclick="showTab('ledger')" id="tab-ledger" class="text-xs uppercase tracking-widest pb-2 text-mist/50">Earnings & Ledger</button>
-                    <button onclick="showTab('health')" id="tab-health" class="text-xs uppercase tracking-widest pb-2 text-mist/50">Mesh Health</button>
-                </div>
-            </div>
-            <div class="text-right pb-2 space-y-2">
-                <button onclick="openIdentityModal()" id="identityBtn" class="bg-bark border border-gold/30 text-[10px] text-gold px-4 py-1 rounded-full hover:bg-gold/10 transition-all">CONNECT_IDENTITY</button>
-                <div id="connectionStatus" class="text-red-500 font-bold text-[8px]">DISCONNECTED</div>
-            </div>
-        </div>
-
-        <!-- TAB: MESH MONITOR -->
-        <div id="content-mesh" class="space-y-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="col-span-2">
-                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Mesh_Intelligence_Graph</h2>
-                    <div class="bg-bark p-6 rounded-2xl border border-chlorophyll/30 h-[400px] relative overflow-hidden">
-                        <svg id="meshGraph" class="w-full h-full"></svg>
-                        <div class="absolute bottom-4 right-4 text-[8px] text-mist/30 italic">Real-time Shard Topology</div>
-                    </div>
-                </div>
-                
-                <div class="col-span-1 space-y-8">
-                    <div>
-                        <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Launch_Readiness</h2>
-                        <div class="bg-bark p-6 rounded-2xl border border-gold/20">
-                            <div class="text-4xl font-bold text-chlorophyll">100%</div>
-                            <div class="text-xs text-mist/50 mt-1 uppercase">Infrastructure Ready</div>
-                            <div class="w-full bg-black/50 h-2 rounded-full mt-4 overflow-hidden">
-                                <div class="bg-chlorophyll h-full w-[100%]"></div>
-                            </div>
-                            <div class="mt-4 space-y-2">
-                                <div class="text-[10px] text-chlorophyll flex justify-between"><span>Core Protocol</span> <span>DONE</span></div>
-                                <div class="text-[10px] text-chlorophyll flex justify-between"><span>Mesh Hardening</span> <span>DONE</span></div>
-                                <div id="statusNeural" class="text-[10px] text-gold flex justify-between animate-pulse"><span>Neural Deployment</span> <span>ACTIVE</span></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div>
-                        <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Mesh_Wallet</h2>
-                        <div class="bg-bark p-6 rounded-2xl border border-gold/30">
-                            <div id="synBalance" class="text-3xl font-bold text-gold">0.00</div>
-                            <div class="text-[10px] text-mist/50 uppercase mt-1">$SYN Earnings (Real-time)</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="col-span-1">
-                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Hardware (1080 Ti)</h2>
-                    <div class="bg-bark p-6 rounded-2xl border border-gold/20 h-[190px]">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <div id="gpuTemp" class="text-3xl font-bold text-mist">--°C</div>
-                                <div class="text-[10px] text-mist/50 uppercase">Temp</div>
-                            </div>
-                            <div>
-                                <div id="gpuLoad" class="text-3xl font-bold text-mist">--%</div>
-                                <div class="text-[10px] text-mist/50 uppercase">Load</div>
-                            </div>
-                        </div>
-                        <div class="mt-4">
-                            <div class="flex justify-between text-[10px] text-mist/50 uppercase mb-1">
-                                <span>VRAM</span>
-                                <span id="gpuVramText">-- / -- MB</span>
-                            </div>
-                            <div class="w-full bg-black/50 h-2 rounded-full overflow-hidden">
-                                <div id="gpuVramBar" class="bg-gold h-full w-0 transition-all duration-500"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-span-1">
-                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Command_Inference</h2>
-                    <div class="bg-bark p-6 rounded-2xl border border-gold/20 mb-6">
-                        <textarea id="commandInput" class="w-full bg-black/50 border border-mist/20 rounded-xl p-3 text-gold text-xs h-24 mb-4 focus:border-gold outline-none" placeholder="Enter Neural Pulse Data..."></textarea>
-                        <button onclick="sendSpike()" class="w-full bg-chlorophyll hover:bg-chlorophyll/80 text-mist font-bold py-3 rounded-xl transition-all uppercase tracking-widest shadow-lg shadow-chlorophyll/10">FIRE_SPIKE</button>
-                    </div>
-                </div>
-
-                <div class="col-span-1">
-                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Neural_Output</h2>
-                    <div id="neuralOutput" class="bg-black/60 p-6 rounded-2xl border border-chlorophyll/40 h-[190px] overflow-y-auto text-[10px] font-mono space-y-4">
-                        <div class="text-mist/30 italic">Awaiting results...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div id="content-market" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div id="synapseMarketList" class="col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Dynamic Content -->
-            </div>
-        </div>
-
-        <div id="content-gov" class="hidden space-y-6">
-            <div class="bg-bark p-8 rounded-3xl border border-gold/30">
-                <h2 class="text-2xl font-bold text-gold mb-2 uppercase tracking-widest text-sm">Active_Proposals</h2>
-                <div id="proposalList" class="space-y-4">
-                    <!-- Dynamic Content -->
-                </div>
-            </div>
-        </div>
-
-        <!-- Task #10: Mesh Health Map -->
-        <div id="content-health" class="hidden space-y-8">
-            <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Global_Network_Topology</h2>
-            <div id="healthMapContainer" class="bg-bark p-10 rounded-3xl border border-chlorophyll/20 min-h-[400px]">
-                <!-- Dynamic Grid -->
-            </div>
-        </div>
-
-        <!-- Task #8: Creator Dashboard / Ledger Tab -->
-        <div id="content-ledger" class="hidden space-y-8">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div class="col-span-1">
-                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Node_Reputation</h2>
-                    <div class="bg-bark p-8 rounded-2xl border border-chlorophyll/30 text-center">
-                        <div id="repValue" class="text-6xl font-black text-chlorophyll">1.00</div>
-                        <div class="text-[10px] text-mist/50 uppercase mt-2">Network Quality Score (q_i)</div>
-                        <div class="mt-6 text-left space-y-2">
-                            <div class="text-[8px] text-mist/30 flex justify-between"><span>Base Multiplier</span> <span>1.0x</span></div>
-                            <div class="text-[8px] text-chlorophyll flex justify-between"><span>Uptime Bonus</span> <span id="uptimeBonus">+0.00</span></div>
-                            <div class="text-[8px] text-gold flex justify-between"><span>Work Accuracy</span> <span id="accuracyBonus">+0.00</span></div>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-span-2">
-                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Transaction_Ledger</h2>
-                    <div class="bg-black/40 rounded-2xl border border-gold/20 overflow-hidden">
-                        <div class="h-64 overflow-y-auto" id="ledgerTable">
-                            <table class="w-full text-left text-[10px] font-mono">
-                                <thead class="bg-gold/10 text-gold uppercase sticky top-0">
-                                    <tr>
-                                        <th class="p-4">ID</th>
-                                        <th class="p-4">Type</th>
-                                        <th class="p-4">Amount</th>
-                                        <th class="p-4">Status</th>
-                                        <th class="p-4">Time</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="ledgerBody" class="text-mist/70 divide-y divide-mist/5">
-                                    <!-- Dynamic Rows -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="mt-8">
-            <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Live_Log_Stream</h2>
-            <div id="terminal" class="bg-black/80 p-4 rounded-xl border border-chlorophyll/30 h-64 overflow-y-auto text-[10px] text-chlorophyll font-mono"></div>
-        </div>
-    </div>
-
-    <div id="identityModal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
-        <div class="bg-bark border border-gold/40 p-10 rounded-3xl max-w-sm w-full text-center">
-            <h2 class="text-2xl font-black text-gold mb-6 uppercase tracking-widest">Connect_Mesh</h2>
-            <input type="text" id="peerIdInput" class="w-full bg-black/50 border border-gold/20 rounded-xl p-4 text-gold font-mono text-center mb-6 outline-none focus:border-gold" placeholder="PEER_ID">
-            <button onclick="setIdentity()" class="w-full bg-gold text-black font-black py-4 rounded-2xl hover:bg-gold/80 transition-all uppercase tracking-widest">Authenticate</button>
-            <button onclick="closeIdentityModal()" class="mt-4 text-mist/30 text-[10px] uppercase hover:text-mist">Cancel</button>
-        </div>
-    </div>
-
-    <script src="mesh_health_map.js"></script>
-    <script>
-        let currentPeerId = localStorage.getItem('calyx_peer_id') || 'LOCAL_OPERATOR';
-        let healthMap;
-
-        window.onload = () => {
-            if (currentPeerId !== 'LOCAL_OPERATOR') {
-                document.getElementById('identityBtn').innerText = "ID: " + currentPeerId;
-            }
-            healthMap = new MeshHealthMap('healthMapContainer');
-            refreshData();
-            initGraph();
-            // Periodic refresh
-            setInterval(refreshData, 5000);
-        };
-
-        function refreshData() {
-            fetchRewards();
-            fetchProposals();
-            fetchLedger();
-            fetchMarketplace();
-        }
-
-        async function fetchMarketplace() {
-            try {
-                const resp = await fetch(`/api/marketplace/catalog`);
-                const synapses = await resp.json();
-                const list = document.getElementById('synapseMarketList');
-                if (synapses.length === 0) {
-                    list.innerHTML = '<div class="col-span-3 text-center text-mist/30 italic py-10">No synapses found in registry.</div>';
-                    return;
-                }
-                list.innerHTML = synapses.map(s => `
-                    <div class="bg-black/40 p-6 rounded-2xl border border-gold/20 hover:border-gold/50 transition-all group relative overflow-hidden">
-                        <div class="flex justify-between items-start mb-2">
-                            <h3 class="text-lg font-bold text-gold uppercase tracking-tighter">${s.name}</h3>
-                            <span class="text-[8px] bg-gold/10 text-gold px-2 py-1 rounded-full border border-gold/20">${s.category}</span>
-                        </div>
-                        <p class="text-[10px] text-mist/60 mb-4 h-12 overflow-hidden leading-relaxed">${s.description}</p>
-                        <div class="flex justify-between items-center pt-4 border-t border-mist/10">
-                            <div class="text-[8px] text-mist/30 font-mono">CID: ${s.cid.substring(0, 12)}...</div>
-                            <button onclick="installSynapse('${s.synapse_id}', '${s.name}')" 
-                                    class="text-[10px] bg-gold/20 hover:bg-gold/40 text-gold font-bold px-4 py-1 rounded-lg border border-gold/30 transition-all uppercase tracking-widest">
-                                Install
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            } catch(e) {}
-        }
-
-        async function installSynapse(id, name) {
-            const resp = await fetch('/api/marketplace/install', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ synapse_id: id, name: name })
-            });
-            const res = await resp.json();
-            alert(res.status === "INSTALLED" ? `Neural DNA for ${name} merged successfully.` : `Synapse ${name} is already active.`);
-        }
-
-        async function fetchRewards() {
-            try {
-                const resp = await fetch(`/api/rewards/${currentPeerId}`);
-                const data = await resp.json();
-                document.getElementById('synBalance').innerText = data.total.toFixed(2);
-                if (data.reputation) {
-                    document.getElementById('repValue').innerText = data.reputation.toFixed(2);
-                }
-            } catch(e) {}
-        }
-
-        async function fetchProposals() {
-            try {
-                const resp = await fetch(`/api/dao/proposals`);
-                const props = await resp.json();
-                const list = document.getElementById('proposalList');
-                list.innerHTML = props.map(p => `
-                    <div class="bg-black/40 p-6 rounded-2xl border border-mist/10 flex justify-between items-center">
-                        <div>
-                            <h3 class="text-lg font-bold text-mist">${p.proposal_id} <span class="text-[10px] ${p.status === 'OPEN' ? 'text-gold' : 'text-chlorophyll'}">[${p.status}]</span></h3>
-                            <p class="text-xs text-mist/50 mt-1">${p.description}</p>
-                        </div>
-                        ${p.status === 'OPEN' ? `
-                        <div class="flex space-x-2">
-                            <button onclick="castVote('${p.proposal_id}', 'YES')" class="bg-chlorophyll/20 hover:bg-chlorophyll/40 text-chlorophyll font-bold px-4 py-2 rounded-xl border border-chlorophyll/30 transition-all">YES</button>
-                            <button onclick="castVote('${p.proposal_id}', 'NO')" class="bg-red-900/20 hover:bg-red-900/40 text-red-500 font-bold px-4 py-2 rounded-xl border border-red-500/30 transition-all">NO</button>
-                        </div>
-                        ` : ''}
-                    </div>
-                `).join('');
-            } catch(e) {}
-        }
-
-        async function fetchLedger() {
-            try {
-                const resp = await fetch(`/api/ledger/${currentPeerId}`);
-                const txs = await resp.json();
-                const body = document.getElementById('ledgerBody');
-                body.innerHTML = txs.map(tx => `
-                    <tr>
-                        <td class="p-4 text-mist/30">#${tx.tx_id}</td>
-                        <td class="p-4 font-bold ${tx.tx_type === 'MINT' ? 'text-gold' : 'text-chlorophyll'}">${tx.tx_type}</td>
-                        <td class="p-4">${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(4)} $SYN</td>
-                        <td class="p-4 text-[8px] uppercase">Confirmed</td>
-                        <td class="p-4 text-mist/30">${new Date(tx.timestamp).toLocaleTimeString()}</td>
-                    </tr>
-                `).join('');
-            } catch(e) {}
-        }
-
-        function showTab(tab) {
-            ['mesh', 'market', 'gov', 'ledger', 'health'].forEach(t => {
-                const el = document.getElementById('content-' + t);
-                const btn = document.getElementById('tab-' + t);
-                if (el) el.classList.add('hidden');
-                if (btn) {
-                    btn.classList.remove('tab-active');
-                    btn.classList.add('text-mist/50');
-                }
-            });
-            const activeEl = document.getElementById('content-' + tab);
-            const activeBtn = document.getElementById('tab-' + tab);
-            if (activeEl) activeEl.classList.remove('hidden');
-            if (activeBtn) {
-                activeBtn.classList.add('tab-active');
-                activeBtn.classList.remove('text-mist/50');
-            }
-        }
-
-        const ws = new WebSocket(`ws://${window.location.host}/ws`);
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type === "VITALS") updateHardwareUI(data.payload);
-            if (data.type === "INFERENCE_RESULT") {
-                updateNeuralOutput(data.payload);
-                triggerNeuralFlow(data.payload);
-            }
-            if (data.type === "MESH_UPDATE") {
-                updateGraph(data.payload);
-            }
-            if (data.type === "LOG") {
-                appendToTerminal(data.payload);
-            }
-        };
-
-        function updateHardwareUI(vitals) {
-            document.getElementById('gpuTemp').innerText = vitals.temp + "°C";
-            document.getElementById('gpuLoad').innerText = vitals.load + "%";
-            document.getElementById('gpuVramText').innerText = `${Math.round(vitals.vram_used)} / ${Math.round(vitals.vram_total)} MB`;
-            document.getElementById('gpuVramBar').style.width = (vitals.vram_used / vitals.vram_total * 100) + "%";
-        }
-
-        function updateNeuralOutput(res) {
-            const out = document.getElementById('neuralOutput');
-            if(out.innerHTML.includes('Awaiting')) out.innerHTML = '';
-            const entry = document.createElement('div');
-            entry.className = "p-2 bg-bark/40 rounded-lg border border-chlorophyll/20 mb-2 plant-pulse";
-            entry.innerHTML = `<div class="text-chlorophyll font-bold">PULSE: ${res.input}</div><div class="text-gold">RESULT: ${res.output}</div>`;
-            out.prepend(entry);
-        }
-
-        function triggerNeuralFlow(payload) {
-            d3.selectAll("line")
-                .transition()
-                .duration(200)
-                .attr("stroke", "#FFD700")
-                .attr("stroke-width", 4)
-                .transition()
-                .duration(800)
-                .attr("stroke", "#2D6A4F")
-                .attr("stroke-width", 1);
-        }
-
-        function appendToTerminal(log) {
-            const term = document.getElementById('terminal');
-            const line = document.createElement('div');
-            line.innerHTML = `<span class="text-mist/50">[${new Date().toLocaleTimeString()}]</span> <span class="text-gold">[${log.event}]</span> <span class="text-chlorophyll/80">${JSON.stringify(log.data)}</span>`;
-            term.prepend(line);
-        }
-
-        // D3 Graph Logic
-        const svg = d3.select("#meshGraph");
-        let simulation;
-        let graphData = { nodes: [], links: [] };
-
-        function initGraph() {
-            const cb = document.getElementById('meshGraph').getBoundingClientRect();
-            simulation = d3.forceSimulation()
-                .force("link", d3.forceLink().id(d => d.id).distance(120))
-                .force("charge", d3.forceManyBody().strength(-300))
-                .force("center", d3.forceCenter(cb.width / 2, cb.height / 2));
-        }
-
-        function updateGraph(pushedData) {
-            const data = pushedData || graphData;
-            graphData = data;
-            
-            // Update the health map too (Task #10)
-            if (window.healthMap) window.healthMap.update(data);
-
-            svg.selectAll("*").remove();
-            
-            const link = svg.append("g")
-                .attr("stroke", "#2D6A4F")
-                .attr("stroke-opacity", 0.6)
-                .selectAll("line")
-                .data(data.links)
-                .join("line");
-
-            const node = svg.append("g")
-                .selectAll("circle")
-                .data(data.nodes)
-                .join("circle")
-                .attr("r", 12)
-                .attr("fill", d => d.is_ready ? (d.group === 1 ? "#FFD700" : "#2D6A4F") : "#FF4500")
-                .attr("stroke", "#000")
-                .attr("stroke-width", 2);
-
-            const text = svg.append("g")
-                .selectAll("text")
-                .data(data.nodes)
-                .join("text")
-                .text(d => d.label)
-                .attr("font-size", "10px")
-                .attr("fill", "#E0E0E0")
-                .attr("dx", 15)
-                .attr("dy", 4);
-
-            simulation.nodes(data.nodes);
-            simulation.force("link").links(data.links);
-            simulation.alpha(0.3).restart();
-            simulation.on("tick", () => {
-                link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
-                    .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
-                node.attr("cx", d => d.x).attr("cy", d => d.y);
-                text.attr("x", d => d.x).attr("y", d => d.y);
-            });
-        }
-
-        async function sendSpike() {
-            const text = document.getElementById('commandInput').value;
-            if (!text) return;
-            await fetch('/api/command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, peer_id: currentPeerId })
-            });
-            document.getElementById('commandInput').value = "";
-        }
-
-        async function castVote(propId, val) {
-            await fetch('/api/dao/vote', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ proposal_id: propId, peer_id: currentPeerId, vote: val })
-            });
-            refreshData();
-        }
-    </script>
-</body>
-</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>INGRVM Hub | Mission Control</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0A0F0D; color: #E0E0E0; font-family: 'Courier New', Courier, monospace; overflow-x: hidden; }
+        .bg-bark { background-color: rgba(74, 55, 40, 0.2); }
+        .text-gold { color: #FFD700; }
+        .text-chlorophyll { color: #2D6A4F; }
+        .spike-flash { background-color: rgba(45, 106, 79, 0.4) !important; }
+        @keyframes pulse-grow {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(1.02); filter: brightness(1.5); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        .plant-pulse { animation: pulse-grow 0.3s ease-out; }
+        .tab-active { border-bottom: 2px solid #FFD700; color: #FFD700; font-weight: bold; }
+        #neuralOutput::-webkit-scrollbar, #ledgerTable::-webkit-scrollbar { width: 4px; }
+        #neuralOutput::-webkit-scrollbar-thumb, #ledgerTable::-webkit-scrollbar-thumb { background: #2D6A4F; border-radius: 10px; }
+        
+        .link-pulse {
+            stroke-dasharray: 5;
+            animation: dash 2s linear infinite;
+        }
+        @keyframes dash {
+            to { stroke-dashoffset: -20; }
+        }
+    </style>
+</head>
+<body class="p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex justify-between items-end border-b border-chlorophyll/30 pb-4 mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-chlorophyll font-mono">INGRVM_HUB <span class="text-xs text-mist/50">v1.3.4</span></h1>
+                <div class="flex space-x-8 mt-4">
+                    <button onclick="showTab('mesh')" id="tab-mesh" class="tab-active text-xs uppercase tracking-widest pb-2">Mesh Monitor</button>
+                    <button onclick="showTab('market')" id="tab-market" class="text-xs uppercase tracking-widest pb-2 text-mist/50">INGRVM Market</button>
+                    <button onclick="showTab('gov')" id="tab-gov" class="text-xs uppercase tracking-widest pb-2 text-mist/50">DAO Governance</button>
+                    <button onclick="showTab('ledger')" id="tab-ledger" class="text-xs uppercase tracking-widest pb-2 text-mist/50">Earnings & Ledger</button>
+                    <button onclick="showTab('health')" id="tab-health" class="text-xs uppercase tracking-widest pb-2 text-mist/50">Mesh Health</button>
+                </div>
+            </div>
+            <div class="text-right pb-2 space-y-2">
+                <button onclick="openIdentityModal()" id="identityBtn" class="bg-bark border border-gold/30 text-[10px] text-gold px-4 py-1 rounded-full hover:bg-gold/10 transition-all">CONNECT_IDENTITY</button>
+                <div id="connectionStatus" class="text-red-500 font-bold text-[8px]">DISCONNECTED</div>
+            </div>
+        </div>
+
+        <!-- TAB: MESH MONITOR -->
+        <div id="content-mesh" class="space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="col-span-2">
+                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Mesh_Intelligence_Graph</h2>
+                    <div class="bg-bark p-6 rounded-2xl border border-chlorophyll/30 h-[400px] relative overflow-hidden">
+                        <svg id="meshGraph" class="w-full h-full"></svg>
+                        <div class="absolute bottom-4 right-4 text-[8px] text-mist/30 italic">Real-time Shard Topology</div>
+                    </div>
+                </div>
+                
+                <div class="col-span-1 space-y-8">
+                    <div>
+                        <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Launch_Readiness</h2>
+                        <div class="bg-bark p-6 rounded-2xl border border-gold/20">
+                            <div class="text-4xl font-bold text-chlorophyll">100%</div>
+                            <div class="text-xs text-mist/50 mt-1 uppercase">Infrastructure Ready</div>
+                            <div class="w-full bg-black/50 h-2 rounded-full mt-4 overflow-hidden">
+                                <div class="bg-chlorophyll h-full w-[100%]"></div>
+                            </div>
+                            <div class="mt-4 space-y-2">
+                                <div class="text-[10px] text-chlorophyll flex justify-between"><span>Core Protocol</span> <span>DONE</span></div>
+                                <div class="text-[10px] text-chlorophyll flex justify-between"><span>Mesh Hardening</span> <span>DONE</span></div>
+                                <div id="statusNeural" class="text-[10px] text-gold flex justify-between animate-pulse"><span>Neural Deployment</span> <span>ACTIVE</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Mesh_Wallet</h2>
+                        <div class="bg-bark p-6 rounded-2xl border border-gold/30">
+                            <div id="synBalance" class="text-3xl font-bold text-gold">0.00</div>
+                            <div class="text-[10px] text-mist/50 uppercase mt-1">$DOPA Earnings (Real-time)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="col-span-1">
+                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Hardware (1080 Ti)</h2>
+                    <div class="bg-bark p-6 rounded-2xl border border-gold/20 h-[190px]">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div id="gpuTemp" class="text-3xl font-bold text-mist">--°C</div>
+                                <div class="text-[10px] text-mist/50 uppercase">Temp</div>
+                            </div>
+                            <div>
+                                <div id="gpuLoad" class="text-3xl font-bold text-mist">--%</div>
+                                <div class="text-[10px] text-mist/50 uppercase">Load</div>
+                            </div>
+                        </div>
+                        <div class="mt-4">
+                            <div class="flex justify-between text-[10px] text-mist/50 uppercase mb-1">
+                                <span>VRAM</span>
+                                <span id="gpuVramText">-- / -- MB</span>
+                            </div>
+                            <div class="w-full bg-black/50 h-2 rounded-full overflow-hidden">
+                                <div id="gpuVramBar" class="bg-gold h-full w-0 transition-all duration-500"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Command_Inference</h2>
+                    <div class="bg-bark p-6 rounded-2xl border border-gold/20 mb-6">
+                        <textarea id="commandInput" class="w-full bg-black/50 border border-mist/20 rounded-xl p-3 text-gold text-xs h-24 mb-4 focus:border-gold outline-none" placeholder="Enter Neural Pulse Data..."></textarea>
+                        <button onclick="sendSpike()" class="w-full bg-chlorophyll hover:bg-chlorophyll/80 text-mist font-bold py-3 rounded-xl transition-all uppercase tracking-widest shadow-lg shadow-chlorophyll/10">FIRE_SPIKE</button>
+                    </div>
+                </div>
+
+                <div class="col-span-1">
+                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Neural_Output</h2>
+                    <div id="neuralOutput" class="bg-black/60 p-6 rounded-2xl border border-chlorophyll/40 h-[190px] overflow-y-auto text-[10px] font-mono space-y-4">
+                        <div class="text-mist/30 italic">Awaiting results...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="content-market" class="hidden grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div id="ingrvmMarketList" class="col-span-3 grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Dynamic Content -->
+            </div>
+        </div>
+
+        <div id="content-gov" class="hidden space-y-6">
+            <div class="bg-bark p-8 rounded-3xl border border-gold/30">
+                <h2 class="text-2xl font-bold text-gold mb-2 uppercase tracking-widest text-sm">Active_Proposals</h2>
+                <div id="proposalList" class="space-y-4">
+                    <!-- Dynamic Content -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Task #10: Mesh Health Map -->
+        <div id="content-health" class="hidden space-y-8">
+            <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Global_Network_Topology</h2>
+            <div id="healthMapContainer" class="bg-bark p-10 rounded-3xl border border-chlorophyll/20 min-h-[400px]">
+                <!-- Dynamic Grid -->
+            </div>
+        </div>
+
+        <!-- Task #8: Creator Dashboard / Ledger Tab -->
+        <div id="content-ledger" class="hidden space-y-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="col-span-1">
+                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Node_Reputation</h2>
+                    <div class="bg-bark p-8 rounded-2xl border border-chlorophyll/30 text-center">
+                        <div id="repValue" class="text-6xl font-black text-chlorophyll">1.00</div>
+                        <div class="text-[10px] text-mist/50 uppercase mt-2">Network Quality Score (q_i)</div>
+                        <div class="mt-6 text-left space-y-2">
+                            <div class="text-[8px] text-mist/30 flex justify-between"><span>Base Multiplier</span> <span>1.0x</span></div>
+                            <div class="text-[8px] text-chlorophyll flex justify-between"><span>Uptime Bonus</span> <span id="uptimeBonus">+0.00</span></div>
+                            <div class="text-[8px] text-gold flex justify-between"><span>Work Accuracy</span> <span id="accuracyBonus">+0.00</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-span-2">
+                    <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Transaction_Ledger</h2>
+                    <div class="bg-black/40 rounded-2xl border border-gold/20 overflow-hidden">
+                        <div class="h-64 overflow-y-auto" id="ledgerTable">
+                            <table class="w-full text-left text-[10px] font-mono">
+                                <thead class="bg-gold/10 text-gold uppercase sticky top-0">
+                                    <tr>
+                                        <th class="p-4">ID</th>
+                                        <th class="p-4">Type</th>
+                                        <th class="p-4">Amount</th>
+                                        <th class="p-4">Status</th>
+                                        <th class="p-4">Time</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ledgerBody" class="text-mist/70 divide-y divide-mist/5">
+                                    <!-- Dynamic Rows -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-8">
+            <h2 class="text-xl font-bold mb-4 uppercase tracking-widest text-mist/50 text-[10px]">Live_Log_Stream</h2>
+            <div id="terminal" class="bg-black/80 p-4 rounded-xl border border-chlorophyll/30 h-64 overflow-y-auto text-[10px] text-chlorophyll font-mono"></div>
+        </div>
+    </div>
+
+    <div id="identityModal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center p-4 z-50">
+        <div class="bg-bark border border-gold/40 p-10 rounded-3xl max-w-sm w-full text-center">
+            <h2 class="text-2xl font-black text-gold mb-6 uppercase tracking-widest">Connect_Mesh</h2>
+            <input type="text" id="peerIdInput" class="w-full bg-black/50 border border-gold/20 rounded-xl p-4 text-gold font-mono text-center mb-6 outline-none focus:border-gold" placeholder="PEER_ID">
+            <button onclick="setIdentity()" class="w-full bg-gold text-black font-black py-4 rounded-2xl hover:bg-gold/80 transition-all uppercase tracking-widest">Authenticate</button>
+            <button onclick="closeIdentityModal()" class="mt-4 text-mist/30 text-[10px] uppercase hover:text-mist">Cancel</button>
+        </div>
+    </div>
+
+    <script src="mesh_health_map.js"></script>
+    <script>
+        let currentPeerId = localStorage.getItem('INGRVM_peer_id') || 'LOCAL_OPERATOR';
+        let healthMap;
+
+        window.onload = () => {
+            if (currentPeerId !== 'LOCAL_OPERATOR') {
+                document.getElementById('identityBtn').innerText = "ID: " + currentPeerId;
+            }
+            healthMap = new MeshHealthMap('healthMapContainer');
+            refreshData();
+            initGraph();
+            // Periodic refresh
+            setInterval(refreshData, 5000);
+        };
+
+        function refreshData() {
+            fetchRewards();
+            fetchProposals();
+            fetchLedger();
+            fetchMarketplace();
+        }
+
+        async function fetchMarketplace() {
+            try {
+                const resp = await fetch(`/api/marketplace/catalog`);
+                const ingrvms = await resp.json();
+                const list = document.getElementById('ingrvmMarketList');
+                if (ingrvms.length === 0) {
+                    list.innerHTML = '<div class="col-span-3 text-center text-mist/30 italic py-10">No ingrvms found in registry.</div>';
+                    return;
+                }
+                list.innerHTML = ingrvms.map(s => `
+                    <div class="bg-black/40 p-6 rounded-2xl border border-gold/20 hover:border-gold/50 transition-all group relative overflow-hidden">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-lg font-bold text-gold uppercase tracking-tighter">${s.name}</h3>
+                            <span class="text-[8px] bg-gold/10 text-gold px-2 py-1 rounded-full border border-gold/20">${s.category}</span>
+                        </div>
+                        <p class="text-[10px] text-mist/60 mb-4 h-12 overflow-hidden leading-relaxed">${s.description}</p>
+                        <div class="flex justify-between items-center pt-4 border-t border-mist/10">
+                            <div class="text-[8px] text-mist/30 font-mono">CID: ${s.cid.substring(0, 12)}...</div>
+                            <button onclick="installINGRVM('${s.ingrvm_id}', '${s.name}')" 
+                                    class="text-[10px] bg-gold/20 hover:bg-gold/40 text-gold font-bold px-4 py-1 rounded-lg border border-gold/30 transition-all uppercase tracking-widest">
+                                Install
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        async function installINGRVM(id, name) {
+            const resp = await fetch('/api/marketplace/install', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ingrvm_id: id, name: name })
+            });
+            const res = await resp.json();
+            alert(res.status === "INSTALLED" ? `Neural DNA for ${name} merged successfully.` : `INGRVM ${name} is already active.`);
+        }
+
+        async function fetchRewards() {
+            try {
+                const resp = await fetch(`/api/rewards/${currentPeerId}`);
+                const data = await resp.json();
+                document.getElementById('synBalance').innerText = data.total.toFixed(2);
+                if (data.reputation) {
+                    document.getElementById('repValue').innerText = data.reputation.toFixed(2);
+                }
+            } catch(e) {}
+        }
+
+        async function fetchProposals() {
+            try {
+                const resp = await fetch(`/api/dao/proposals`);
+                const props = await resp.json();
+                const list = document.getElementById('proposalList');
+                list.innerHTML = props.map(p => `
+                    <div class="bg-black/40 p-6 rounded-2xl border border-mist/10 flex justify-between items-center">
+                        <div>
+                            <h3 class="text-lg font-bold text-mist">${p.proposal_id} <span class="text-[10px] ${p.status === 'OPEN' ? 'text-gold' : 'text-chlorophyll'}">[${p.status}]</span></h3>
+                            <p class="text-xs text-mist/50 mt-1">${p.description}</p>
+                        </div>
+                        ${p.status === 'OPEN' ? `
+                        <div class="flex space-x-2">
+                            <button onclick="castVote('${p.proposal_id}', 'YES')" class="bg-chlorophyll/20 hover:bg-chlorophyll/40 text-chlorophyll font-bold px-4 py-2 rounded-xl border border-chlorophyll/30 transition-all">YES</button>
+                            <button onclick="castVote('${p.proposal_id}', 'NO')" class="bg-red-900/20 hover:bg-red-900/40 text-red-500 font-bold px-4 py-2 rounded-xl border border-red-500/30 transition-all">NO</button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        async function fetchLedger() {
+            try {
+                const resp = await fetch(`/api/ledger/${currentPeerId}`);
+                const txs = await resp.json();
+                const body = document.getElementById('ledgerBody');
+                body.innerHTML = txs.map(tx => `
+                    <tr>
+                        <td class="p-4 text-mist/30">#${tx.tx_id}</td>
+                        <td class="p-4 font-bold ${tx.tx_type === 'MINT' ? 'text-gold' : 'text-chlorophyll'}">${tx.tx_type}</td>
+                        <td class="p-4">${tx.amount > 0 ? '+' : ''}${tx.amount.toFixed(4)} $DOPA</td>
+                        <td class="p-4 text-[8px] uppercase">Confirmed</td>
+                        <td class="p-4 text-mist/30">${new Date(tx.timestamp).toLocaleTimeString()}</td>
+                    </tr>
+                `).join('');
+            } catch(e) {}
+        }
+
+        function showTab(tab) {
+            ['mesh', 'market', 'gov', 'ledger', 'health'].forEach(t => {
+                const el = document.getElementById('content-' + t);
+                const btn = document.getElementById('tab-' + t);
+                if (el) el.classList.add('hidden');
+                if (btn) {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('text-mist/50');
+                }
+            });
+            const activeEl = document.getElementById('content-' + tab);
+            const activeBtn = document.getElementById('tab-' + tab);
+            if (activeEl) activeEl.classList.remove('hidden');
+            if (activeBtn) {
+                activeBtn.classList.add('tab-active');
+                activeBtn.classList.remove('text-mist/50');
+            }
+        }
+
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            if (data.type === "VITALS") updateHardwareUI(data.payload);
+            if (data.type === "INFERENCE_RESULT") {
+                updateNeuralOutput(data.payload);
+                triggerNeuralFlow(data.payload);
+            }
+            if (data.type === "MESH_UPDATE") {
+                updateGraph(data.payload);
+            }
+            if (data.type === "LOG") {
+                appendToTerminal(data.payload);
+            }
+        };
+
+        function updateHardwareUI(vitals) {
+            document.getElementById('gpuTemp').innerText = vitals.temp + "°C";
+            document.getElementById('gpuLoad').innerText = vitals.load + "%";
+            document.getElementById('gpuVramText').innerText = `${Math.round(vitals.vram_used)} / ${Math.round(vitals.vram_total)} MB`;
+            document.getElementById('gpuVramBar').style.width = (vitals.vram_used / vitals.vram_total * 100) + "%";
+        }
+
+        function updateNeuralOutput(res) {
+            const out = document.getElementById('neuralOutput');
+            if(out.innerHTML.includes('Awaiting')) out.innerHTML = '';
+            const entry = document.createElement('div');
+            entry.className = "p-2 bg-bark/40 rounded-lg border border-chlorophyll/20 mb-2 plant-pulse";
+            entry.innerHTML = `<div class="text-chlorophyll font-bold">PULSE: ${res.input}</div><div class="text-gold">RESULT: ${res.output}</div>`;
+            out.prepend(entry);
+        }
+
+        function triggerNeuralFlow(payload) {
+            d3.selectAll("line")
+                .transition()
+                .duration(200)
+                .attr("stroke", "#FFD700")
+                .attr("stroke-width", 4)
+                .transition()
+                .duration(800)
+                .attr("stroke", "#2D6A4F")
+                .attr("stroke-width", 1);
+        }
+
+        function appendToTerminal(log) {
+            const term = document.getElementById('terminal');
+            const line = document.createElement('div');
+            line.innerHTML = `<span class="text-mist/50">[${new Date().toLocaleTimeString()}]</span> <span class="text-gold">[${log.event}]</span> <span class="text-chlorophyll/80">${JSON.stringify(log.data)}</span>`;
+            term.prepend(line);
+        }
+
+        // D3 Graph Logic
+        const svg = d3.select("#meshGraph");
+        let simulation;
+        let graphData = { nodes: [], links: [] };
+
+        function initGraph() {
+            const cb = document.getElementById('meshGraph').getBoundingClientRect();
+            simulation = d3.forceSimulation()
+                .force("link", d3.forceLink().id(d => d.id).distance(120))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(cb.width / 2, cb.height / 2));
+        }
+
+        function updateGraph(pushedData) {
+            const data = pushedData || graphData;
+            graphData = data;
+            
+            // Update the health map too (Task #10)
+            if (window.healthMap) window.healthMap.update(data);
+
+            svg.selectAll("*").remove();
+            
+            const link = svg.append("g")
+                .attr("stroke", "#2D6A4F")
+                .attr("stroke-opacity", 0.6)
+                .selectAll("line")
+                .data(data.links)
+                .join("line");
+
+            const node = svg.append("g")
+                .selectAll("circle")
+                .data(data.nodes)
+                .join("circle")
+                .attr("r", 12)
+                .attr("fill", d => d.is_ready ? (d.group === 1 ? "#FFD700" : "#2D6A4F") : "#FF4500")
+                .attr("stroke", "#000")
+                .attr("stroke-width", 2);
+
+            const text = svg.append("g")
+                .selectAll("text")
+                .data(data.nodes)
+                .join("text")
+                .text(d => d.label)
+                .attr("font-size", "10px")
+                .attr("fill", "#E0E0E0")
+                .attr("dx", 15)
+                .attr("dy", 4);
+
+            simulation.nodes(data.nodes);
+            simulation.force("link").links(data.links);
+            simulation.alpha(0.3).restart();
+            simulation.on("tick", () => {
+                link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+                node.attr("cx", d => d.x).attr("cy", d => d.y);
+                text.attr("x", d => d.x).attr("y", d => d.y);
+            });
+        }
+
+        async function sendSpike() {
+            const text = document.getElementById('commandInput').value;
+            if (!text) return;
+            await fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text, peer_id: currentPeerId })
+            });
+            document.getElementById('commandInput').value = "";
+        }
+
+        async function castVote(propId, val) {
+            await fetch('/api/dao/vote', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ proposal_id: propId, peer_id: currentPeerId, vote: val })
+            });
+            refreshData();
+        }
+    </script>
+</body>
+</html>
+
+

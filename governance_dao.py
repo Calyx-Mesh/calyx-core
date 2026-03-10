@@ -6,33 +6,34 @@ import argparse
 import requests
 from typing import List, Dict, Any, Optional, Tuple
 from pydantic import BaseModel, Field
-from reward_engine import SynapseLedger
-from config import SynapseConfig
+from reward_engine import INGRVMLedger
+from config import INGRVMConfig
 from dotenv import load_dotenv
 
 # Load env for Hub URL
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
-HUB_URL = os.getenv("CALYX_HUB_URL", "http://127.0.0.1:8000")
+HUB_URL = os.getenv("INGRVM_HUB_URL", "http://127.0.0.1:8000")
 
 class Proposal(BaseModel):
     proposal_id: str
     description: str
-    target_synapse: str
+    target_ingrvm: str
     new_weights_hash: str
     options: List[str] = ["ACCEPT", "REJECT"]
     status: str = "OPEN"
     voting_type: str = "WEIGHTED"
     created_at: float = Field(default_factory=time.time)
 
-class SynapseDAO:
+class INGRVMDAO:
     """
     Phase 6 Foundation: SQL-backed Governance DAO.
     Tracks network proposals and node votes.
     """
-    def __init__(self, ledger: SynapseLedger, config: SynapseConfig, db_path: str = "neuromorphic_env/governance.db"):
+    def __init__(self, ledger: INGRVMLedger, config: INGRVMConfig, db_path: str = "neuromorphic_env/governance.db"):
         self.ledger = ledger
         self.config = config
         self.db_path = db_path
+        self.token_symbol = os.getenv("INGRVM_TOKEN_SYMBOL", "DOPA")
         
         if not os.path.exists(os.path.dirname(self.db_path)):
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -49,7 +50,7 @@ class SynapseDAO:
                 proposal_id TEXT PRIMARY KEY,
                 proposer_id TEXT NOT NULL,
                 description TEXT NOT NULL,
-                target_synapse TEXT,
+                target_ingrvm TEXT,
                 new_weights_hash TEXT,
                 status TEXT DEFAULT 'OPEN', -- OPEN, ACCEPTED, REJECTED
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -72,7 +73,7 @@ class SynapseDAO:
         conn.commit()
         conn.close()
 
-    def create_proposal(self, proposer_id: str, description: str, target_synapse: str, weights_hash: str) -> Optional[str]:
+    def create_proposal(self, proposer_id: str, description: str, target_ingrvm: str, weights_hash: str) -> Optional[str]:
         """ Nodes with > 0.8 rep can create proposals. """
         rep = self.ledger.get_reputation(proposer_id)
         if rep < 0.8:
@@ -84,9 +85,9 @@ class SynapseDAO:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO proposals (proposal_id, proposer_id, description, target_synapse, new_weights_hash)
+            INSERT INTO proposals (proposal_id, proposer_id, description, target_ingrvm, new_weights_hash)
             VALUES (?, ?, ?, ?, ?)
-        """, (p_id, proposer_id, description, target_synapse, weights_hash))
+        """, (p_id, proposer_id, description, target_ingrvm, weights_hash))
         conn.commit()
         conn.close()
         
@@ -147,8 +148,10 @@ class SynapseDAO:
         return status, confidence
 
     def _apply_proposal_effects(self, prop: sqlite3.Row):
-        """ Task #15: Executes the technical changes from a passed proposal. """
+        """ Task #15: Executes the technical and financial changes from a passed proposal. """
         desc = prop['description'].lower()
+        
+        # 1. Config Parameter Updates (Task #15)
         if "set " in desc and " to " in desc:
             try:
                 parts = desc.split("set ")[1].split(" to ")
@@ -162,7 +165,50 @@ class SynapseDAO:
                 self.config.set(section, key, val)
                 print(f"[DAO-AUTO] Automation applied: {param_path} = {val}")
             except Exception as e:
-                print(f"[DAO-AUTO] Failed to parse automation from description: {e}")
+                print(f"[DAO-AUTO] Failed to parse automation: {e}")
+
+        # 2. Financial Execution (Task #09: On-Chain Executor)
+        if "mint " in desc or "transfer " in desc:
+            self._execute_financial_action(desc, prop['proposal_id'])
+
+    def _execute_financial_action(self, desc: str, p_id: str):
+        """ 
+        Task #09: The Executor.
+        Parses and executes $DOPA movements approved by the mesh.
+        Example: "Mint 500 to HUB_NODE" or "Transfer 100 from SYSTEM to LAPTOP_RELAY"
+        """
+        try:
+            if "mint " in desc:
+                # Format: "mint [amount] to [node_id]"
+                parts = desc.split("mint ")[1].split(" to ")
+                amount = float(parts[0].strip())
+                target = parts[1].strip().upper()
+                self.ledger.mint_rewards(target, amount, memo=f"DAO Execution: {p_id}")
+                print(f"[DAO-EXEC] SUCCESS: Minted {amount} ${self.token_symbol} to {target}")
+
+            elif "transfer " in desc:
+                # Format: "transfer [amount] from [sender] to [receiver]"
+                parts = desc.split("transfer ")[1].split(" from ")
+                amount = float(parts[0].strip())
+                sub_parts = parts[1].split(" to ")
+                sender = sub_parts[0].strip().upper()
+                receiver = sub_parts[1].strip().upper()
+
+                if self.ledger.transfer(sender, receiver, amount):
+                    print(f"[DAO-EXEC] SUCCESS: Transferred {amount} ${self.token_symbol}: {sender} -> {receiver}")
+                else:
+                    print(f"[DAO-EXEC] FAILED: Insufficient funds or invalid nodes for transfer.")
+
+            elif "slash " in desc:
+                # Format: "slash [amount] from [node_id]"
+                parts = desc.split("slash ")[1].split(" from ")
+                amount = float(parts[0].strip())
+                target = parts[1].strip().upper()
+                self.ledger.burn_stake(target, amount, memo=f"DAO Slashing: {p_id}")
+                print(f"[DAO-EXEC] SUCCESS: Slashed {amount} ${self.token_symbol} from {target} stake.")
+
+        except Exception as e:
+            print(f"[DAO-EXEC] Execution Error: {e}")
 
     def get_proposals(self) -> List[Dict[str, Any]]:
         conn = sqlite3.connect(self.db_path)
@@ -205,7 +251,7 @@ class SynapseDAO:
         return results
 
 def main():
-    parser = argparse.ArgumentParser(description="Calyx Governance DAO CLI")
+    parser = argparse.ArgumentParser(description="INGRVM Governance DAO CLI")
     subparsers = parser.add_subparsers(dest="command")
 
     # List command
@@ -215,7 +261,7 @@ def main():
     vote_p = subparsers.add_parser("vote", help="Cast a vote on a proposal")
     vote_p.add_argument("--id", required=True, help="Proposal ID")
     vote_p.add_argument("--choice", required=True, choices=["YES", "NO"], help="Your vote")
-    vote_p.add_argument("--peer", default=os.getenv("CALYX_NODE_ID", "LAPTOP_RELAY"), help="Your Peer ID")
+    vote_p.add_argument("--peer", default=os.getenv("INGRVM_NODE_ID", "LAPTOP_RELAY"), help="Your Peer ID")
 
     args = parser.parse_args()
 
@@ -251,3 +297,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

@@ -8,7 +8,7 @@ def load_manifest(path):
         return json.load(f)
 
 def run_scrub(repo_root, manifest_path):
-    print("--- 🧼 Calyx Pre-Flight Scrub (Phase 8 Task #2) ---")
+    print("--- 🧼 INGRVM Pre-Flight Scrub (Phase 8 Task #2) ---")
     manifest = load_manifest(manifest_path)
     
     exclude_exts = manifest.get("exclude_extensions", [])
@@ -60,3 +60,4 @@ if __name__ == "__main__":
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(base_dir)))
     manifest_path = os.path.join(base_dir, "scrub_manifest.json")
     run_scrub(repo_root, manifest_path)
+

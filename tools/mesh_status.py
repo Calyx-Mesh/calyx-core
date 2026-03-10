@@ -18,7 +18,7 @@ def check_socket(ip, port):
         return False
 
 def check_status():
-    print(f"--- 🏥 Calyx Mesh Health Check ---")
+    print(f"--- 🏥 INGRVM Mesh Health Check ---")
     
     # 1. Check Hub Connectivity
     try:
@@ -82,3 +82,4 @@ if __name__ == "__main__":
 
 if __name__ == "__main__":
     check_status()
+

@@ -10,7 +10,7 @@ from tools.hardware_monitor import HardwareProtector
 
 class TestPCCore(unittest.TestCase):
     """
-    Unit Tests for Calyx Phase 2 PC Core Logic.
+    Unit Tests for INGRVM Phase 2 PC Core Logic.
     """
     def test_bit_packing(self):
         """ Tests if bit_pack and bit_unpack are lossless for 1-bit values. """
@@ -38,3 +38,4 @@ class TestPCCore(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

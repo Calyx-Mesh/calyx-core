@@ -31,7 +31,7 @@ class SlashingManager:
         record.tokens_earned -= tokens_burned
         
         print(f"[RESULT] Reputation: {old_rep:.2f} -> {record.reputation:.2f}")
-        print(f"[RESULT] Burned: {tokens_burned:.2f} $SYN")
+        print(f"[RESULT] Burned: {tokens_burned:.2f} $DOPA")
         
         self.db.save()
 
@@ -54,3 +54,4 @@ if __name__ == "__main__":
     final_record = db.get_peer(target)
     if final_record and final_record.reputation < 1.0:
         print("\nSUCCESS: Slashing protocol enforced and persisted.")
+

@@ -8,9 +8,5 @@
             "vram_usage_gb": 1.5
         }
     ],
-<<<<<<< Updated upstream
-    "lan_ip": "127.0.0.1"
-=======
     "lan_ip": "192.168.68.51"
->>>>>>> Stashed changes
 }

@@ -13,7 +13,7 @@ except ImportError:
         def __init__(self, addr): self.addr = addr
         def __str__(self): return str(self.addr)
 
-class CalyxRelayV2:
+class INGRVMRelayV2:
     """
     Phase 7 Task #4: libp2p Relay v2 implementation (Functional Mock).
     Acts as a bridge for nodes behind symmetric NATs or restrictive firewalls.
@@ -79,7 +79,7 @@ class AutoNAT:
 if __name__ == "__main__":
     async def test_relay_flow():
         # 1. Setup
-        relay = CalyxRelayV2("12D3KooW_MASTER_RELAY")
+        relay = INGRVMRelayV2("12D3KooW_MASTER_RELAY")
         voter = AutoNAT("LAPTOP_RELAY")
         
         # 2. Check
@@ -92,3 +92,4 @@ if __name__ == "__main__":
             print(f"Path: {public_path}")
 
     trio.run(test_relay_flow)
+

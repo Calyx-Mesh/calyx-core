@@ -9,7 +9,7 @@ from identity_manager import NodeIdentity
 
 class ProposalBuilder:
     """
-    Standardizes the creation of Calyx Governance Proposals.
+    Standardizes the creation of INGRVM Governance Proposals.
     Every proposal must be signed by the architect/proposer.
     """
     def __init__(self, identity: NodeIdentity):
@@ -38,10 +38,11 @@ if __name__ == "__main__":
     builder = ProposalBuilder(id)
     
     prop = builder.create_proposal(
-        title="CALYX_EXPANSION_01",
+        title="INGRVM_EXPANSION_01",
         description="Double the rewards for Type B Neural Shards.",
         action="SET_REWARD_EMISSION 200.0"
     )
     
     if prop["signature"]:
         print("\nSUCCESS: Governance proposal signed and ready for DAO vote.")
+

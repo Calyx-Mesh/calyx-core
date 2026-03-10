@@ -44,7 +44,7 @@ class RuleZeroValidator:
                         results[node_id] = is_synced
                         
                         if not is_synced:
-                            print(f"[RULE-ZERO] Node {node_id} is OUT OF SYNC. Participation denied.")
+                            print(f"[RULE-ZERO] Node {node_id} is OUT OF DOPAC. Participation denied.")
                         else:
                             print(f"[RULE-ZERO] Node {node_id} verified. Participation granted.")
                 except Exception as e:
@@ -71,3 +71,4 @@ if __name__ == "__main__":
     validator = RuleZeroValidator(sm)
     status = validator.validate_mesh()
     print(f"Mesh Sync Status: {status}")
+

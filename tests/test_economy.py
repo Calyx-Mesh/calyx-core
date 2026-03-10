@@ -9,7 +9,7 @@ from reward_engine import RewardEngine
 from slashing_protocol import SlashingManager
 from peer_database import PeerDatabase
 
-class TestCalyxEconomy(unittest.TestCase):
+class TestINGRVMEconomy(unittest.TestCase):
     def setUp(self):
         # Use absolute path for test DB
         self.db_path = os.path.join(os.path.dirname(__file__), "test_peer_db.json")
@@ -49,3 +49,4 @@ class TestCalyxEconomy(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

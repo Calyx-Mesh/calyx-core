@@ -24,7 +24,7 @@ def push_vitals():
                     "vram_used": vitals['vram_used'],
                     "vram_total": vitals['vram_total'],
                     "load": int(vitals['load']),
-                    "psk": "CALYX_SECURE_2026"
+                    "psk": "INGRVM_SECURE_2026"
                 }
                 
                 response = requests.post(HUB_URL, json=payload, timeout=2)
@@ -46,3 +46,4 @@ if __name__ == "__main__":
         push_vitals()
     except KeyboardInterrupt:
         print("\n🛑 Pusher stopped.")
+

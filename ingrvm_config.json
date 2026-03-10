@@ -1,0 +1,38 @@
+{
+    "node": {
+        "p2p_port": 60001,
+        "discovery_port": 60002,
+        "api_port": 8000,
+        "bootstrap_peers": [
+            "/ip4/127.0.0.1/tcp/60001/p2p/12D3KooWEu4SmXGVNVSL4q68HVMm4D6pXt8tV1g1RtY3iTpCJ6Mq"
+        ],
+        "hub_url": "http://127.0.0.1:8000"
+    },
+    "brain": {
+        "layers": [
+            3,
+            8,
+            2
+        ],
+        "beta": 0.95,
+        "threshold": 1.0,
+        "stdp_learning_rate": 0.01
+    },
+    "economy": {
+        "token_symbol": "DOPA",
+        "spike_cost_joules": 0.05,
+        "max_energy_joules": 100.0,
+        "solar_recovery_rate": 2.0
+    },
+    "security": {
+        "min_reputation": 0.5,
+        "max_queue_size": 100,
+        "slashing_severity": 0.5
+    },
+    "paths": {
+        "ingrvms_dir": "neuromorphic_env/ingrvms",
+        "packages_dir": "neuromorphic_env/packages",
+        "identity_file": "neuromorphic_env/identity.key",
+        "peer_db": "neuromorphic_env/peer_db.json"
+    }
+}

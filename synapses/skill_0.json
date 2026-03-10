@@ -1,8 +1,0 @@
-{
-    "synapse_id": "synapse_0",
-    "name": "Sentiment Alpha",
-    "version": "1.0.0",
-    "num_inputs": 3,
-    "num_outputs": 2,
-    "beta": 0.99
-}

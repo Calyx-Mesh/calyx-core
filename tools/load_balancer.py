@@ -3,7 +3,7 @@ from typing import List, Dict
 
 class MetabolicLoadBalancer:
     """
-    Intelligent Router for the Calyx Mesh.
+    Intelligent Router for the INGRVM Mesh.
     Chooses the 'healthiest' peer for a neural hop based on 
     Reputation and Metabolic Energy (Mocked).
     """
@@ -46,3 +46,4 @@ if __name__ == "__main__":
         print("\nSUCCESS: Load balancer correctly prioritized high-energy, high-trust node.")
     else:
         print("\nFAILURE: Suboptimal node chosen.")
+

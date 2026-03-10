@@ -1,12 +1,12 @@
-{
-    "node_name": "MOBILE_EDGE",
-    "shards": [
-        {
-            "model_name": "Synapse-1.0",
-            "layer_start": 0,
-            "layer_end": 5,
-            "vram_usage_gb": 0.1
-        }
-    ],
-    "lan_ip": "127.0.0.1"
+{
+    "node_name": "MOBILE_EDGE",
+    "shards": [
+        {
+            "model_name": "INGRVM-1.0",
+            "layer_start": 0,
+            "layer_end": 5,
+            "vram_usage_gb": 0.1
+        }
+    ],
+    "lan_ip": "127.0.0.1"
 }

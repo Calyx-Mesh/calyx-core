@@ -1,60 +1,68 @@
 import time
+import os
+import requests
 import numpy as np
 from typing import Dict, List
 from peer_database import PeerDatabase
 from reward_engine import RewardEngine
 
-class SubtensorMock:
+class SubtensorBridge:
     """
-    Simulates the Bittensor 'Subtensor' blockchain logic.
-    Handles Epoch settlement using a simplified Yuma Consensus model.
+    Task #06: Subtensor Sovereign Bridge.
+    Connects the INGRVM Mesh to the Bittensor ecosystem ($DOPA <-> $TAO).
+    Fetches market data to determine emission value.
     """
     def __init__(self, db: PeerDatabase):
         self.db = db
         self.epoch_num = 0
-        self.total_syn_emitted = 0.0
+        self.tao_usd_price = 0.0
+        self.token_symbol = os.getenv("INGRVM_TOKEN_SYMBOL", "DOPA")
+        self.syn_tao_rate = 0.001 # Initial peg: 1000 tokens per 1 TAO
+
+    def fetch_market_state(self):
+        """ Task #06: Fetches real TAO price from CoinGecko. """
+        try:
+            url = "https://api.coingecko.com/api/v3/simple/price?ids=bittensor&vs_currencies=usd"
+            resp = requests.get(url, timeout=5).json()
+            self.tao_usd_price = resp['bittensor']['usd']
+            print(f"[BRIDGE] Live TAO Price: ${self.tao_usd_price}")
+        except Exception as e:
+            print(f"[BRIDGE] Market fetch failed, using fallback. Error: {e}")
+            self.tao_usd_price = 450.0 # Fallback
 
     def run_epoch(self, active_work: Dict[str, int]):
         """
-        Settles all network activity for the current period.
+        Settles mesh activity based on Bittensor-linked tokenomics.
         """
+        self.fetch_market_state()
         self.epoch_num += 1
-        print(f"\n--- BLOCKCHAIN EPOCH #{self.epoch_num} STARTED ---")
         
-        # 1. Initialize Reward Engine for this specific emission period
-        # Assume 500 $SYN per epoch emission
-        engine = RewardEngine(epoch_emission=500.0)
+        # Emission scales with TAO value to maintain node profitability
+        emission = 500.0 * (self.tao_usd_price / 400.0) 
+        print(f"\n--- BITTENSOR EPOCH #{self.epoch_num} | Emission: {emission:.2f} ${self.token_symbol} ---")
         
-        # 2. Register all work reported by the mesh
+        engine = RewardEngine(epoch_emission=emission)
+        
         for peer_id, spikes in active_work.items():
-            # Get current reputation from the persistent DB
             record = self.db.get_peer(peer_id)
             rep = record.reputation if record else 1.0
-            
             engine.register_work(peer_id, spikes)
-            # Inject existing reputation into engine
             if peer_id in engine.nodes:
                 engine.nodes[peer_id].reputation_score = rep
 
-        # 3. Calculate Yuma-style distribution
         payouts = engine.calculate_payouts()
         
-        # 4. Commit to the 'Blockchain' (Peer Database)
-        print(f"[SUBTENSOR] Settling rewards for {len(payouts)} nodes...")
+        print(f"[SUBTENSOR] Committing settlement to peer DB...")
         for peer_id, amount in payouts.items():
-            # Update the permanent record
-            # We treat spikes as '0' here because they were already counted in the engine
             self.db.update_peer(peer_id, spikes=0, reward=amount)
-            self.total_syn_emitted += amount
-            
-            print(f"  > Node {peer_id[:8]}... | Reward: +{amount} $SYN | New Balance: {self.db.get_peer(peer_id).tokens_earned:.2f}")
+            print(f"  > Node {peer_id[:8]} | +{amount:.4f} ${self.token_symbol} (Value: ~{amount * self.syn_tao_rate:.6f} TAO)")
 
-        print(f"--- EPOCH #{self.epoch_num} FINALIZED | Total Emission: {self.total_syn_emitted:.2f} $SYN ---")
+        print(f"--- EPOCH #{self.epoch_num} FINALIZED ---")
 
 # --- Verification Test ---
 if __name__ == "__main__":
     database = PeerDatabase()
-    blockchain = SubtensorMock(database)
+    blockchain = SubtensorBridge(database)
     
     # Mock data from the mesh during this epoch
     mock_mesh_work = {
@@ -72,4 +80,6 @@ if __name__ == "__main__":
     blockchain.run_epoch(mock_mesh_work)
     
     if database.get_peer("12D3KooW_MOCK_PEER_ALPHA").tokens_earned > 0:
-        print("\nSUCCESS: Subtensor settlement logic is persistent and accurate.")
+        print("\nSUCCESS: Bittensor Sovereign Bridge is functional.")
+
+

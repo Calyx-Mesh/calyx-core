@@ -1,6 +1,6 @@
 /**
  * Task #10: Mesh Health Map
- * Visualizes the global state of the Calyx nervous system.
+ * Visualizes the global state of the INGRVM nervous system.
  */
 
 class MeshHealthMap {
@@ -56,3 +56,4 @@ class MeshHealthMap {
 
 // Global instance if needed
 window.MeshHealthMap = MeshHealthMap;
+
